@@ -39,13 +39,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /* ARM64/AArch64 NEON intrinsics for FFTS */
-#ifdef __ARM_NEON__
+#if defined(__aarch64__) || defined(__ARM_NEON__)
 #include <arm_neon.h>
-#elif defined(__aarch64__)
-#include <arm_neon.h>
+#include <stddef.h>  /* For size_t */
+#include <stdint.h>  /* For uint64_t, uint32_t */
 #else
 // Dummy defines for non-ARM platforms  
 typedef struct { float val[4]; } float32x4_t;
+typedef struct { float val[4]; } float32x4x2_t;
+typedef struct { int val[4]; } int32x4_t;
 typedef struct { float val[2]; } float32x2_t;
 #endif
 #include "ffts_attributes.h"

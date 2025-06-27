@@ -29,6 +29,7 @@
 
 */
 
+#define _ISOC11_SOURCE  /* For aligned_alloc */
 #include "../include/ffts.h"
 #include "../src/ffts_attributes.h"
 
@@ -104,8 +105,8 @@ int test_transform(int n, int sign)
     float FFTS_ALIGN(32) *input = _mm_malloc(2 * n * sizeof(float), 32);
     float FFTS_ALIGN(32) *output = _mm_malloc(2 * n * sizeof(float), 32);
 #else
-    float FFTS_ALIGN(32) *input = valloc(2 * n * sizeof(float));
-    float FFTS_ALIGN(32) *output = valloc(2 * n * sizeof(float));
+    float FFTS_ALIGN(32) *input = aligned_alloc(32, 2 * n * sizeof(float));
+    float FFTS_ALIGN(32) *output = aligned_alloc(32, 2 * n * sizeof(float));
 #endif
     int i;
 
@@ -116,7 +117,7 @@ int test_transform(int n, int sign)
 
     input[2] = 1.0f;
 
-    p = ffts_init_1d(i, sign);
+    p = ffts_init_1d(n, sign);
     if (!p) {
         printf("Plan unsupported\n");
         return 0;
@@ -142,8 +143,8 @@ int main(int argc, char *argv[])
         float FFTS_ALIGN(32) *input = _mm_malloc(2 * n * sizeof(float), 32);
         float FFTS_ALIGN(32) *output = _mm_malloc(2 * n * sizeof(float), 32);
 #else
-        float FFTS_ALIGN(32) *input = valloc(2 * n * sizeof(float));
-        float FFTS_ALIGN(32) *output = valloc(2 * n * sizeof(float));
+        float FFTS_ALIGN(32) *input = aligned_alloc(32, 2 * n * sizeof(float));
+        float FFTS_ALIGN(32) *output = aligned_alloc(32, 2 * n * sizeof(float));
 #endif
 
         for (i = 0; i < n; i++) {
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 
         /* input[2] = 1.0f; */
 
-        p = ffts_init_1d(i, sign);
+        p = ffts_init_1d(n, sign);
         if (!p) {
             printf("Plan unsupported\n");
             return 0;

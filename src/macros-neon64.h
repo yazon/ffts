@@ -225,71 +225,84 @@ V4SF2_STORE_SPR(float *addr, V4SF2 p)
  * =============================================== */
 
 /* Complex multiplication with twiddle factors using optimized AArch64 approach */
-static FFTS_ALWAYS_INLINE V4SF
+static FFTS_INLINE V4SF
 V4SF_CMUL_NEON64(V4SF re, V4SF im, V4SF twr, V4SF twi)
 {
-#ifdef __ARM_FEATURE_FMA
-    /* Use FMLA for optimal performance on ARMv8+ */
-    V4SF temp_re = V4SF_MUL(re, twr);
-    V4SF temp_im = V4SF_MUL(im, twr);
-    re = V4SF_FMSUB(im, twi, temp_re);  /* re*twr - im*twi */
-    im = V4SF_FMADD(re, twi, temp_im);  /* im*twr + re*twi */
-    return vcombine_f32(vget_low_f32(re), vget_low_f32(im));
-#else
-    /* Fallback for older ARM64 cores */
-    re = V4SF_SUB(V4SF_MUL(re, twr), V4SF_MUL(im, twi));
-    im = V4SF_ADD(V4SF_MUL(im, twr), V4SF_MUL(re, twi));
-    return vcombine_f32(vget_low_f32(re), vget_low_f32(im));
-#endif
+    /* Complex multiplication: (re + i*im) * (twr + i*twi) */
+    /* Result: (re*twr - im*twi) + i*(re*twi + im*twr) */
+    
+    V4SF re_twr = V4SF_MUL(re, twr);
+    V4SF im_twi = V4SF_MUL(im, twi);
+    V4SF re_twi = V4SF_MUL(re, twi);
+    V4SF im_twr = V4SF_MUL(im, twr);
+    
+    V4SF real_part = V4SF_SUB(re_twr, im_twi);
+    V4SF imag_part = V4SF_ADD(re_twi, im_twr);
+    
+    /* Interleave real and imaginary parts */
+    return vuzp1q_f32(real_part, imag_part);
 }
 
 /* Complex conjugate multiplication optimized for AArch64 */
-static FFTS_ALWAYS_INLINE V4SF
+static FFTS_INLINE V4SF
 V4SF_CMULJ_NEON64(V4SF re, V4SF im, V4SF twr, V4SF twi)
 {
-#ifdef __ARM_FEATURE_FMA
-    /* Conjugate: (a + bi) * (c - di) = (ac + bd) + (bc - ad)i */
-    V4SF temp_re = V4SF_MUL(re, twr);
-    V4SF temp_im = V4SF_MUL(im, twr);
-    re = V4SF_FMADD(im, twi, temp_re);  /* re*twr + im*twi */
-    im = V4SF_FMSUB(im, twr, V4SF_MUL(re, twi));  /* im*twr - re*twi */
-    return vcombine_f32(vget_low_f32(re), vget_low_f32(im));
-#else
-    /* Fallback for older ARM64 cores */
-    re = V4SF_ADD(V4SF_MUL(re, twr), V4SF_MUL(im, twi));
-    im = V4SF_SUB(V4SF_MUL(im, twr), V4SF_MUL(re, twi));
-    return vcombine_f32(vget_low_f32(re), vget_low_f32(im));
-#endif
+    /* Complex multiplication with conjugate: (re + i*im) * (twr - i*twi) */
+    /* Result: (re*twr + im*twi) + i*(im*twr - re*twi) */
+    
+    V4SF re_twr = V4SF_MUL(re, twr);
+    V4SF im_twi = V4SF_MUL(im, twi);
+    V4SF re_twi = V4SF_MUL(re, twi);
+    V4SF im_twr = V4SF_MUL(im, twr);
+    
+    V4SF real_part = V4SF_ADD(re_twr, im_twi);
+    V4SF imag_part = V4SF_SUB(im_twr, re_twi);
+    
+    /* Interleave real and imaginary parts */
+    return vuzp1q_f32(real_part, imag_part);
 }
 
 /* Butterfly operation for FFT - optimized for AArch64 register set */
-static FFTS_ALWAYS_INLINE void
+static FFTS_INLINE void
 V4SF_BUTTERFLY_NEON64(V4SF *a, V4SF *b, V4SF twr, V4SF twi)
 {
-    V4SF temp = V4SF_CMUL_NEON64(*b, vget_high_f32(*b), twr, twi);
-    *b = V4SF_SUB(*a, temp);
-    *a = V4SF_ADD(*a, temp);
+    /* Extract high part of b as a V4SF by duplicating the upper 2 elements */
+    V4SF b_hi = vcombine_f32(vget_high_f32(*b), vget_high_f32(*b));
+    V4SF temp = V4SF_CMUL_NEON64(*b, b_hi, twr, twi);
+    
+    V4SF a_temp = *a;
+    *a = V4SF_ADD(a_temp, temp);
+    *b = V4SF_SUB(a_temp, temp);
 }
 
 /* Inverse butterfly operation */
-static FFTS_ALWAYS_INLINE void
+static FFTS_INLINE void
 V4SF_BUTTERFLY_INV_NEON64(V4SF *a, V4SF *b, V4SF twr, V4SF twi)
 {
-    V4SF temp = V4SF_CMULJ_NEON64(*b, vget_high_f32(*b), twr, twi);
-    *b = V4SF_SUB(*a, temp);
-    *a = V4SF_ADD(*a, temp);
+    /* Extract high part of b as a V4SF by duplicating the upper 2 elements */
+    V4SF b_hi = vcombine_f32(vget_high_f32(*b), vget_high_f32(*b));
+    V4SF temp = V4SF_CMULJ_NEON64(*b, b_hi, twr, twi);
+    
+    V4SF a_temp = *a;
+    *a = V4SF_ADD(a_temp, temp);
+    *b = V4SF_SUB(a_temp, temp);
 }
 
 /* 4-way complex multiply for parallel processing */
-static FFTS_ALWAYS_INLINE void
+static FFTS_INLINE void
 V4SF_CMUL4_NEON64(V4SF *r0, V4SF *r1, V4SF *r2, V4SF *r3,
                    V4SF tw0r, V4SF tw0i, V4SF tw1r, V4SF tw1i)
 {
-    /* Process 4 complex numbers in parallel using NEON64 registers */
-    *r0 = V4SF_CMUL_NEON64(*r0, vget_high_f32(*r0), tw0r, tw0i);
-    *r1 = V4SF_CMUL_NEON64(*r1, vget_high_f32(*r1), tw0r, tw0i);
-    *r2 = V4SF_CMUL_NEON64(*r2, vget_high_f32(*r2), tw1r, tw1i);
-    *r3 = V4SF_CMUL_NEON64(*r3, vget_high_f32(*r3), tw1r, tw1i);
+    /* Apply twiddle factors to all four registers */
+    V4SF r0_hi = vcombine_f32(vget_high_f32(*r0), vget_high_f32(*r0));
+    V4SF r1_hi = vcombine_f32(vget_high_f32(*r1), vget_high_f32(*r1));
+    V4SF r2_hi = vcombine_f32(vget_high_f32(*r2), vget_high_f32(*r2));
+    V4SF r3_hi = vcombine_f32(vget_high_f32(*r3), vget_high_f32(*r3));
+    
+    *r0 = V4SF_CMUL_NEON64(*r0, r0_hi, tw0r, tw0i);
+    *r1 = V4SF_CMUL_NEON64(*r1, r1_hi, tw0r, tw0i);
+    *r2 = V4SF_CMUL_NEON64(*r2, r2_hi, tw1r, tw1i);
+    *r3 = V4SF_CMUL_NEON64(*r3, r3_hi, tw1r, tw1i);
 }
 
 /* ===================================================
@@ -392,8 +405,6 @@ V4SF_FLUSH_CACHE_LINE(const void *addr)
 #define V4SF_PERF_STOP()  
 #endif
 
-/* Branch prediction hints for FFT control flow */
-#define FFTS_LIKELY(x)   __builtin_expect(!!(x), 1)
-#define FFTS_UNLIKELY(x) __builtin_expect(!!(x), 0)
+/* Branch prediction hints are already defined in ffts_attributes.h */
 
 #endif /* FFTS_MACROS_NEON64_H */ 

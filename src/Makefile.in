@@ -151,11 +151,11 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 libffts_la_LIBADD =
 am__libffts_la_SOURCES_DIST = ffts.c ffts_nd.c ffts_real.c \
 	ffts_real_nd.c ffts_transpose.c ffts_trig.c ffts_static.c \
-	codegen.h codegen_arm.h codegen_sse.h ffts.h ffts_nd.h \
-	ffts_real.h ffts_real_nd.h ffts_small.h ffts_static.h \
-	macros-alpha.h macros-altivec.h macros-neon.h macros-sse.h \
-	macros.h neon.h neon_float.h patterns.h types.h vfp.h \
-	codegen.c vfp.s macros-neon64.h ffts_runtime_arm64.c \
+	ffts_chirp_z.c codegen.h codegen_arm.h codegen_sse.h ffts.h \
+	ffts_nd.h ffts_real.h ffts_real_nd.h ffts_small.h \
+	ffts_static.h macros-alpha.h macros-altivec.h macros-neon.h \
+	macros-sse.h macros.h neon.h neon_float.h patterns.h types.h \
+	vfp.h codegen.c vfp.s macros-neon64.h ffts_runtime_arm64.c \
 	ffts_runtime_arm64.h arch/arm64/arm64-codegen.c neon.s \
 	neon_static_f.s neon_static_i.s
 @DYNAMIC_DISABLED_TRUE@am__objects_1 = ffts_static.lo
@@ -171,9 +171,9 @@ am__libffts_la_SOURCES_DIST = ffts.c ffts_nd.c ffts_real.c \
 am__objects_8 =
 am_libffts_la_OBJECTS = ffts.lo ffts_nd.lo ffts_real.lo \
 	ffts_real_nd.lo ffts_transpose.lo ffts_trig.lo ffts_static.lo \
-	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
-	$(am__objects_4) $(am__objects_5) $(am__objects_6) \
-	$(am__objects_7) $(am__objects_8)
+	ffts_chirp_z.lo $(am__objects_1) $(am__objects_2) \
+	$(am__objects_3) $(am__objects_4) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7) $(am__objects_8)
 libffts_la_OBJECTS = $(am_libffts_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -196,8 +196,8 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/arm64-codegen.Plo \
 	./$(DEPDIR)/codegen.Plo ./$(DEPDIR)/ffts.Plo \
-	./$(DEPDIR)/ffts_nd.Plo ./$(DEPDIR)/ffts_real.Plo \
-	./$(DEPDIR)/ffts_real_nd.Plo \
+	./$(DEPDIR)/ffts_chirp_z.Plo ./$(DEPDIR)/ffts_nd.Plo \
+	./$(DEPDIR)/ffts_real.Plo ./$(DEPDIR)/ffts_real_nd.Plo \
 	./$(DEPDIR)/ffts_runtime_arm64.Plo ./$(DEPDIR)/ffts_static.Plo \
 	./$(DEPDIR)/ffts_transpose.Plo ./$(DEPDIR)/ffts_trig.Plo
 am__mv = mv -f
@@ -392,14 +392,14 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libffts.la
 libffts_la_SOURCES = ffts.c ffts_nd.c ffts_real.c ffts_real_nd.c \
-	ffts_transpose.c ffts_trig.c ffts_static.c codegen.h \
-	codegen_arm.h codegen_sse.h ffts.h ffts_nd.h ffts_real.h \
-	ffts_real_nd.h ffts_small.h ffts_static.h macros-alpha.h \
-	macros-altivec.h macros-neon.h macros-sse.h macros.h neon.h \
-	neon_float.h patterns.h types.h vfp.h $(am__append_1) \
-	$(am__append_2) $(am__append_3) $(am__append_4) \
-	$(am__append_5) $(am__append_6) $(am__append_7) \
-	$(am__append_8)
+	ffts_transpose.c ffts_trig.c ffts_static.c ffts_chirp_z.c \
+	codegen.h codegen_arm.h codegen_sse.h ffts.h ffts_nd.h \
+	ffts_real.h ffts_real_nd.h ffts_small.h ffts_static.h \
+	macros-alpha.h macros-altivec.h macros-neon.h macros-sse.h \
+	macros.h neon.h neon_float.h patterns.h types.h vfp.h \
+	$(am__append_1) $(am__append_2) $(am__append_3) \
+	$(am__append_4) $(am__append_5) $(am__append_6) \
+	$(am__append_7) $(am__append_8)
 libffts_includedir = $(includedir)/ffts
 libffts_include_HEADERS = ../include/ffts.h
 AM_CFLAGS = -I$(top_srcdir)/include -DAUTOTOOLS_BUILD=yes
@@ -484,6 +484,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arm64-codegen.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/codegen.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ffts.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ffts_chirp_z.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ffts_nd.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ffts_real.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ffts_real_nd.Plo@am__quote@ # am--include-marker
@@ -692,6 +693,7 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/arm64-codegen.Plo
 	-rm -f ./$(DEPDIR)/codegen.Plo
 	-rm -f ./$(DEPDIR)/ffts.Plo
+	-rm -f ./$(DEPDIR)/ffts_chirp_z.Plo
 	-rm -f ./$(DEPDIR)/ffts_nd.Plo
 	-rm -f ./$(DEPDIR)/ffts_real.Plo
 	-rm -f ./$(DEPDIR)/ffts_real_nd.Plo
@@ -747,6 +749,7 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/arm64-codegen.Plo
 	-rm -f ./$(DEPDIR)/codegen.Plo
 	-rm -f ./$(DEPDIR)/ffts.Plo
+	-rm -f ./$(DEPDIR)/ffts_chirp_z.Plo
 	-rm -f ./$(DEPDIR)/ffts_nd.Plo
 	-rm -f ./$(DEPDIR)/ffts_real.Plo
 	-rm -f ./$(DEPDIR)/ffts_real_nd.Plo

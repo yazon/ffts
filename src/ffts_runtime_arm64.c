@@ -207,6 +207,60 @@ const char* ffts_get_arm64_cpu_info(void)
     return info_buffer;
 }
 
+/* Generic fallback 1D 32-bit float transform implementation */
+void ffts_execute_1d_32f(ffts_plan_t *p, const void *input, void *output)
+{
+    /* For ARM64, if we reach here, use static transform functions */
+#ifdef DYNAMIC_DISABLED
+    if (p && p->transform) {
+        /* Use the transform function stored in the plan */
+        p->transform(p, input, output);
+    }
+#else
+    /* Fallback to generated code or static transform */
+    if (p && p->transform) {
+        p->transform(p, input, output);
+    }
+#endif
+}
+
+/* Stub implementations for ARM64 NEON functions */
+void ffts_execute_1d_32f_arm64_neon_small(ffts_plan_t *p, const void *input, void *output)
+{
+    /* TODO: Implement ARM64 NEON small transform */
+    /* For now, fallback to generic implementation */
+    if (p && p->transform && p->transform != ffts_execute_1d_32f_arm64_neon_small) {
+        p->transform(p, input, output);
+    }
+}
+
+void ffts_execute_1d_32f_arm64_neon_medium(ffts_plan_t *p, const void *input, void *output)
+{
+    /* TODO: Implement ARM64 NEON medium transform */
+    /* For now, fallback to generic implementation */
+    if (p && p->transform && p->transform != ffts_execute_1d_32f_arm64_neon_medium) {
+        p->transform(p, input, output);
+    }
+}
+
+void ffts_execute_1d_32f_arm64_neon_large(ffts_plan_t *p, const void *input, void *output)
+{
+    /* TODO: Implement ARM64 NEON large transform */
+    /* For now, fallback to generic implementation */
+    if (p && p->transform && p->transform != ffts_execute_1d_32f_arm64_neon_large) {
+        p->transform(p, input, output);
+    }
+}
+
+void ffts_execute_1d_32f_arm64_sve(ffts_plan_t *p, const void *input, void *output)
+{
+    /* TODO: Implement ARM64 SVE transform */
+    /* For now, fallback to generic implementation */
+    if (p && p->transform && p->transform != ffts_execute_1d_32f_arm64_sve) {
+        p->transform(p, input, output);
+    }
+}
+
 #else /* !__aarch64__ */
 
 /* Stub implementations for non-ARM64 platforms */

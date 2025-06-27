@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stddef.h>  /* for size_t */
 
 /* AArch64 instruction type */
 typedef uint32_t arm64instr_t;

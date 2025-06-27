@@ -21,6 +21,9 @@
 
 #include "ffts_internal.h"
 
+/* Ensure ffts_plan_t is properly defined */
+typedef struct _ffts_plan_t ffts_plan_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -95,6 +98,11 @@ void ffts_arm64_init_cpu_caps(void);
 #ifdef __aarch64__
 
 /**
+ * Generic 1D 32-bit float transform (fallback implementation)
+ */
+void ffts_execute_1d_32f(ffts_plan_t *p, const void *input, void *output);
+
+/**
  * ARM64 NEON implementation for small transforms (N <= 8)
  */
 void ffts_execute_1d_32f_arm64_neon_small(ffts_plan_t *p, const void *input, void *output);
@@ -115,10 +123,6 @@ void ffts_execute_1d_32f_arm64_neon_large(ffts_plan_t *p, const void *input, voi
 void ffts_execute_1d_32f_arm64_sve(ffts_plan_t *p, const void *input, void *output);
 
 #endif /* __aarch64__ */
-
-/* Forward declarations */
-struct ffts_plan_t;
-typedef struct ffts_plan_t ffts_plan_t;
 
 #ifdef __cplusplus
 }

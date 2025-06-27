@@ -52,48 +52,21 @@
 extern "C" {
 #endif
 
-/* ARM64-specific instruction type for FFTS */
-typedef arm64instr_t ffts_insn_t;
+/* ARM64-specific instruction type for FFTS - compatible with existing insns_t */
+#ifdef __aarch64__
+typedef uint32_t ffts_insn_t;  /* ARM64 instructions are 32-bit */
+#else
+typedef uint8_t ffts_insn_t;   /* Fallback for non-ARM64 platforms */
+#endif
 
 /* ARM64 SIMD constants for FFT operations */
 extern const float arm64_neon_constants[];
 extern const float arm64_neon_constants_inv[];
 
-/* ARM64 FFT Constants - forward transform */
-static const float arm64_neon_constants[] = {
-    /* Sign mask for complex multiplication */
-    -0.0f, 0.0f, -0.0f, 0.0f,
-    
-    /* Twiddle factors for 8-point FFT */
-    1.0f, 0.0f, 0.7071067811865475f, -0.7071067811865475f,   /* W_8^0, W_8^1 */
-    0.0f, -1.0f, -0.7071067811865475f, -0.7071067811865475f,  /* W_8^2, W_8^3 */
-    
-    /* Additional constants for larger transforms */
-    0.9238795325112867f, -0.3826834323650898f,   /* W_16^1 */
-    0.3826834323650898f, -0.9238795325112867f,   /* W_16^3 */
-    
-    /* Constants for complex number operations */
-    1.0f, 1.0f, 1.0f, 1.0f,        /* All ones */
-    -1.0f, 1.0f, -1.0f, 1.0f,      /* Alternating sign for imaginary parts */
-};
+/* ARM64 FFT Constants - these are defined in arm64-codegen.c to avoid conflicts */
 
-/* ARM64 FFT Constants - inverse transform */
-static const float arm64_neon_constants_inv[] = {
-    /* Sign mask for complex multiplication (inverted) */
-    0.0f, -0.0f, 0.0f, -0.0f,
-    
-    /* Twiddle factors for 8-point IFFT (conjugated) */
-    1.0f, 0.0f, 0.7071067811865475f, 0.7071067811865475f,    /* W_8^0, W_8^1* */
-    0.0f, 1.0f, -0.7071067811865475f, 0.7071067811865475f,   /* W_8^2*, W_8^3* */
-    
-    /* Additional constants for larger transforms (conjugated) */
-    0.9238795325112867f, 0.3826834323650898f,    /* W_16^1* */
-    0.3826834323650898f, 0.9238795325112867f,    /* W_16^3* */
-    
-    /* Constants for complex number operations */
-    1.0f, 1.0f, 1.0f, 1.0f,        /* All ones */
-    -1.0f, 1.0f, -1.0f, 1.0f,      /* Alternating sign for imaginary parts */
-};
+/* Forward declaration */
+struct _ffts_plan_t;
 
 /* Function prototypes for ARM64 FFT code generation */
 
@@ -134,7 +107,7 @@ generate_size16_base_case_arm64(ffts_insn_t **p, int sign)
 
 /* Prologue/Epilogue generation */
 static inline ffts_insn_t*
-generate_prologue_arm64(ffts_insn_t **p, ffts_plan_t *plan)
+generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
 {
     ffts_insn_t *start = *p;
     
@@ -270,7 +243,7 @@ generate_leaf_finish_arm64(ffts_insn_t **p)
 
 /* Memory operation helpers */
 static inline void
-generate_constants_load_arm64(ffts_insn_t **p, ffts_plan_t *plan, int sign)
+generate_constants_load_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan, int sign)
 {
     /* Load constants appropriate for forward/inverse FFT */
     if (sign < 0) {
@@ -330,6 +303,11 @@ generate_size16_base_case(ffts_insn_t **p, int sign)
 {
     return generate_size16_base_case_arm64(p, sign);
 }
+
+/* ARM64 NEON instruction macros for FFT operations */
+/* Note: These macros are also defined in arm64-codegen.h - using those instead */
+
+/* Convenient macros for ARM64 instruction emission - use those from arm64-codegen.h */
 
 #ifdef __cplusplus
 }

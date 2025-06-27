@@ -41,6 +41,42 @@
 #include <string.h>
 #endif
 
+/* ARM64 FFT Constants - forward transform */
+const float arm64_neon_constants[] = {
+    /* Sign mask for complex multiplication */
+    -0.0f, 0.0f, -0.0f, 0.0f,
+    
+    /* Twiddle factors for 8-point FFT */
+    1.0f, 0.0f, 0.7071067811865475f, -0.7071067811865475f,   /* W_8^0, W_8^1 */
+    0.0f, -1.0f, -0.7071067811865475f, -0.7071067811865475f,  /* W_8^2, W_8^3 */
+    
+    /* Additional constants for larger transforms */
+    0.9238795325112867f, -0.3826834323650898f,   /* W_16^1 */
+    0.3826834323650898f, -0.9238795325112867f,   /* W_16^3 */
+    
+    /* Constants for complex number operations */
+    1.0f, 1.0f, 1.0f, 1.0f,        /* All ones */
+    -1.0f, 1.0f, -1.0f, 1.0f,      /* Alternating sign for imaginary parts */
+};
+
+/* ARM64 FFT Constants - inverse transform */
+const float arm64_neon_constants_inv[] = {
+    /* Sign mask for complex multiplication (inverted) */
+    0.0f, -0.0f, 0.0f, -0.0f,
+    
+    /* Twiddle factors for 8-point IFFT (conjugated) */
+    1.0f, 0.0f, 0.7071067811865475f, 0.7071067811865475f,    /* W_8^0, W_8^1* */
+    0.0f, 1.0f, -0.7071067811865475f, 0.7071067811865475f,   /* W_8^2*, W_8^3* */
+    
+    /* Additional constants for larger transforms (conjugated) */
+    0.9238795325112867f, 0.3826834323650898f,    /* W_16^1* */
+    0.3826834323650898f, 0.9238795325112867f,    /* W_16^3* */
+    
+    /* Constants for complex number operations */
+    1.0f, 1.0f, 1.0f, 1.0f,        /* All ones */
+    -1.0f, 1.0f, -1.0f, 1.0f,      /* Alternating sign for imaginary parts */
+};
+
 /* Function prologue generation for ARM64 FFT functions */
 void 
 arm64_generate_prologue(arm64instr_t **p, ARM64Reg data_ptr, ARM64Reg lut_ptr)

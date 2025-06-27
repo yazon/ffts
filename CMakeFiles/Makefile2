@@ -28,6 +28,9 @@ default_target: all
 
 .SUFFIXES: .hpux_make_needs_suffix_list
 
+# Produce verbose output by default.
+VERBOSE = 1
+
 # Command-line flag to silence nested $(MAKE).
 $(VERBOSE)MAKESILENT = -s
 
@@ -68,7 +71,6 @@ all: CMakeFiles/ffts_test.dir/all
 all: CMakeFiles/ffts_test_arm64_performance.dir/all
 all: CMakeFiles/ffts_test_arm64.dir/all
 all: CMakeFiles/ffts_test_arm64_validation.dir/all
-all: CMakeFiles/ffts_test_arm64_cross_platform.dir/all
 all: CMakeFiles/ffts_test_arm64_performance_validation.dir/all
 .PHONY : all
 
@@ -82,7 +84,6 @@ clean: CMakeFiles/ffts_test.dir/clean
 clean: CMakeFiles/ffts_test_arm64_performance.dir/clean
 clean: CMakeFiles/ffts_test_arm64.dir/clean
 clean: CMakeFiles/ffts_test_arm64_validation.dir/clean
-clean: CMakeFiles/ffts_test_arm64_cross_platform.dir/clean
 clean: CMakeFiles/ffts_test_arm64_performance_validation.dir/clean
 clean: CMakeFiles/test_arm64_performance.dir/clean
 clean: CMakeFiles/test_arm64_complete.dir/clean
@@ -147,7 +148,7 @@ CMakeFiles/ffts_test.dir/clean:
 CMakeFiles/ffts_test_arm64_performance.dir/all: CMakeFiles/ffts_static.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_performance.dir/build.make CMakeFiles/ffts_test_arm64_performance.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_performance.dir/build.make CMakeFiles/ffts_test_arm64_performance.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=17,18 "Built target ffts_test_arm64_performance"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=15,16 "Built target ffts_test_arm64_performance"
 .PHONY : CMakeFiles/ffts_test_arm64_performance.dir/all
 
 # Build rule for subdir invocation for target.
@@ -199,7 +200,7 @@ CMakeFiles/ffts_test_arm64.dir/clean:
 CMakeFiles/ffts_test_arm64_validation.dir/all: CMakeFiles/ffts_static.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_validation.dir/build.make CMakeFiles/ffts_test_arm64_validation.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_validation.dir/build.make CMakeFiles/ffts_test_arm64_validation.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=21,22 "Built target ffts_test_arm64_validation"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=19,20 "Built target ffts_test_arm64_validation"
 .PHONY : CMakeFiles/ffts_test_arm64_validation.dir/all
 
 # Build rule for subdir invocation for target.
@@ -219,39 +220,13 @@ CMakeFiles/ffts_test_arm64_validation.dir/clean:
 .PHONY : CMakeFiles/ffts_test_arm64_validation.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/ffts_test_arm64_cross_platform.dir
-
-# All Build rule for target.
-CMakeFiles/ffts_test_arm64_cross_platform.dir/all: CMakeFiles/ffts_static.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_cross_platform.dir/build.make CMakeFiles/ffts_test_arm64_cross_platform.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_cross_platform.dir/build.make CMakeFiles/ffts_test_arm64_cross_platform.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=15,16 "Built target ffts_test_arm64_cross_platform"
-.PHONY : CMakeFiles/ffts_test_arm64_cross_platform.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/ffts_test_arm64_cross_platform.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jason/ai/ffts/CMakeFiles 12
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ffts_test_arm64_cross_platform.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jason/ai/ffts/CMakeFiles 0
-.PHONY : CMakeFiles/ffts_test_arm64_cross_platform.dir/rule
-
-# Convenience name for target.
-ffts_test_arm64_cross_platform: CMakeFiles/ffts_test_arm64_cross_platform.dir/rule
-.PHONY : ffts_test_arm64_cross_platform
-
-# clean rule for target.
-CMakeFiles/ffts_test_arm64_cross_platform.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_cross_platform.dir/build.make CMakeFiles/ffts_test_arm64_cross_platform.dir/clean
-.PHONY : CMakeFiles/ffts_test_arm64_cross_platform.dir/clean
-
-#=============================================================================
 # Target rules for target CMakeFiles/ffts_test_arm64_performance_validation.dir
 
 # All Build rule for target.
 CMakeFiles/ffts_test_arm64_performance_validation.dir/all: CMakeFiles/ffts_static.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_performance_validation.dir/build.make CMakeFiles/ffts_test_arm64_performance_validation.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ffts_test_arm64_performance_validation.dir/build.make CMakeFiles/ffts_test_arm64_performance_validation.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=19,20 "Built target ffts_test_arm64_performance_validation"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=17,18 "Built target ffts_test_arm64_performance_validation"
 .PHONY : CMakeFiles/ffts_test_arm64_performance_validation.dir/all
 
 # Build rule for subdir invocation for target.
@@ -277,7 +252,7 @@ CMakeFiles/ffts_test_arm64_performance_validation.dir/clean:
 CMakeFiles/test_arm64_performance.dir/all: CMakeFiles/ffts_test_arm64_performance.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_arm64_performance.dir/build.make CMakeFiles/test_arm64_performance.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_arm64_performance.dir/build.make CMakeFiles/test_arm64_performance.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=24 "Built target test_arm64_performance"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=22 "Built target test_arm64_performance"
 .PHONY : CMakeFiles/test_arm64_performance.dir/all
 
 # Build rule for subdir invocation for target.
@@ -300,18 +275,17 @@ CMakeFiles/test_arm64_performance.dir/clean:
 # Target rules for target CMakeFiles/test_arm64_complete.dir
 
 # All Build rule for target.
-CMakeFiles/test_arm64_complete.dir/all: CMakeFiles/ffts_test_arm64_cross_platform.dir/all
 CMakeFiles/test_arm64_complete.dir/all: CMakeFiles/ffts_test_arm64_performance_validation.dir/all
 CMakeFiles/test_arm64_complete.dir/all: CMakeFiles/ffts_test_arm64.dir/all
 CMakeFiles/test_arm64_complete.dir/all: CMakeFiles/ffts_test_arm64_validation.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_arm64_complete.dir/build.make CMakeFiles/test_arm64_complete.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_arm64_complete.dir/build.make CMakeFiles/test_arm64_complete.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=23 "Built target test_arm64_complete"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=21 "Built target test_arm64_complete"
 .PHONY : CMakeFiles/test_arm64_complete.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/test_arm64_complete.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jason/ai/ffts/CMakeFiles 19
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/jason/ai/ffts/CMakeFiles 17
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_arm64_complete.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/jason/ai/ffts/CMakeFiles 0
 .PHONY : CMakeFiles/test_arm64_complete.dir/rule

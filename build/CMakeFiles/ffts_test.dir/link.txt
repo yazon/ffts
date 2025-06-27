@@ -1,1 +1,0 @@
-/usr/bin/cc  -Wall -Wextra -fvisibility=hidden -O3 -DNDEBUG -rdynamic CMakeFiles/ffts_test.dir/tests/test.c.o -o ffts_test  libffts.a -lm 

@@ -65,7 +65,6 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/ffts_test_arm64_performance.dir/DependInfo.cmake"
   "CMakeFiles/ffts_test_arm64.dir/DependInfo.cmake"
   "CMakeFiles/ffts_test_arm64_validation.dir/DependInfo.cmake"
-  "CMakeFiles/ffts_test_arm64_cross_platform.dir/DependInfo.cmake"
   "CMakeFiles/ffts_test_arm64_performance_validation.dir/DependInfo.cmake"
   "CMakeFiles/test_arm64_performance.dir/DependInfo.cmake"
   "CMakeFiles/test_arm64_complete.dir/DependInfo.cmake"

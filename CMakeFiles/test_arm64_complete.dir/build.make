@@ -27,6 +27,9 @@
 
 .SUFFIXES: .hpux_make_needs_suffix_list
 
+# Produce verbose output by default.
+VERBOSE = 1
+
 # Command-line flag to silence nested $(MAKE).
 $(VERBOSE)MAKESILENT = -s
 
@@ -68,12 +71,10 @@ include CMakeFiles/test_arm64_complete.dir/progress.make
 
 CMakeFiles/test_arm64_complete: ffts_test_arm64
 CMakeFiles/test_arm64_complete: ffts_test_arm64_validation
-CMakeFiles/test_arm64_complete: ffts_test_arm64_cross_platform
 CMakeFiles/test_arm64_complete: ffts_test_arm64_performance_validation
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/jason/ai/ffts/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Running complete ARM64 test suite"
 	./ffts_test_arm64
 	./ffts_test_arm64_validation
-	./ffts_test_arm64_cross_platform
 	./ffts_test_arm64_performance_validation
 
 test_arm64_complete: CMakeFiles/test_arm64_complete

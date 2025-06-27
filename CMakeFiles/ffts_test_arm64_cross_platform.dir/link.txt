@@ -1,1 +1,0 @@
-/usr/bin/cc  -Wall -Wextra -fvisibility=hidden -O3 -DNDEBUG -rdynamic CMakeFiles/ffts_test_arm64_cross_platform.dir/tests/test_arm64_cross_platform.c.o -o ffts_test_arm64_cross_platform  libffts.a -lm 

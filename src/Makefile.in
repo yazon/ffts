@@ -151,14 +151,15 @@ am__installdirs = "$(DESTDIR)$(libdir)" \
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libffts_la_LIBADD =
 am__libffts_la_SOURCES_DIST = ffts.c ffts_nd.c ffts_real.c \
-	ffts_real_nd.c ffts_transpose.c ffts_trig.c ffts_static.c \
-	ffts_chirp_z.c codegen.h codegen_arm.h codegen_sse.h ffts.h \
-	ffts_nd.h ffts_real.h ffts_real_nd.h ffts_small.h \
-	ffts_static.h macros-alpha.h macros-altivec.h macros-neon.h \
-	macros-sse.h macros.h neon.h neon_float.h patterns.h types.h \
-	vfp.h codegen.c vfp.s macros-neon64.h ffts_runtime_arm64.c \
-	ffts_runtime_arm64.h arch/arm64/arm64-codegen.c \
-	neon64_static.s neon.s neon_static_f.s neon_static_i.s
+	ffts_real_nd.c ffts_transpose.c ffts_trig.c ffts_chirp_z.c \
+	codegen.h codegen_arm.h codegen_sse.h ffts.h ffts_nd.h \
+	ffts_real.h ffts_real_nd.h ffts_small.h ffts_static.h \
+	macros-alpha.h macros-altivec.h macros-neon.h macros-sse.h \
+	macros.h neon.h neon_float.h patterns.h types.h vfp.h \
+	ffts_static.c codegen.c vfp.s macros-neon64.h \
+	ffts_runtime_arm64.c ffts_runtime_arm64.h \
+	arch/arm64/arm64-codegen.c neon64_static.s neon.s \
+	neon_static_f.s neon_static_i.s
 @DYNAMIC_DISABLED_TRUE@am__objects_1 = ffts_static.lo
 @DYNAMIC_DISABLED_FALSE@am__objects_2 = codegen.lo
 @HAVE_VFP_TRUE@am__objects_3 = vfp.lo
@@ -172,11 +173,10 @@ am__libffts_la_SOURCES_DIST = ffts.c ffts_nd.c ffts_real.c \
 @DYNAMIC_DISABLED_TRUE@@HAVE_ARM64_FALSE@@HAVE_NEON_TRUE@@HAVE_VFP_FALSE@	neon_static_i.lo
 am__objects_9 =
 am_libffts_la_OBJECTS = ffts.lo ffts_nd.lo ffts_real.lo \
-	ffts_real_nd.lo ffts_transpose.lo ffts_trig.lo ffts_static.lo \
-	ffts_chirp_z.lo $(am__objects_1) $(am__objects_2) \
-	$(am__objects_3) $(am__objects_4) $(am__objects_5) \
-	$(am__objects_6) $(am__objects_7) $(am__objects_8) \
-	$(am__objects_9)
+	ffts_real_nd.lo ffts_transpose.lo ffts_trig.lo ffts_chirp_z.lo \
+	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
+	$(am__objects_4) $(am__objects_5) $(am__objects_6) \
+	$(am__objects_7) $(am__objects_8) $(am__objects_9)
 libffts_la_OBJECTS = $(am_libffts_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -395,14 +395,14 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libffts.la
 libffts_la_SOURCES = ffts.c ffts_nd.c ffts_real.c ffts_real_nd.c \
-	ffts_transpose.c ffts_trig.c ffts_static.c ffts_chirp_z.c \
-	codegen.h codegen_arm.h codegen_sse.h ffts.h ffts_nd.h \
-	ffts_real.h ffts_real_nd.h ffts_small.h ffts_static.h \
-	macros-alpha.h macros-altivec.h macros-neon.h macros-sse.h \
-	macros.h neon.h neon_float.h patterns.h types.h vfp.h \
-	$(am__append_1) $(am__append_2) $(am__append_3) \
-	$(am__append_4) $(am__append_5) $(am__append_6) \
-	$(am__append_7) $(am__append_8) $(am__append_9)
+	ffts_transpose.c ffts_trig.c ffts_chirp_z.c codegen.h \
+	codegen_arm.h codegen_sse.h ffts.h ffts_nd.h ffts_real.h \
+	ffts_real_nd.h ffts_small.h ffts_static.h macros-alpha.h \
+	macros-altivec.h macros-neon.h macros-sse.h macros.h neon.h \
+	neon_float.h patterns.h types.h vfp.h $(am__append_1) \
+	$(am__append_2) $(am__append_3) $(am__append_4) \
+	$(am__append_5) $(am__append_6) $(am__append_7) \
+	$(am__append_8) $(am__append_9)
 libffts_includedir = $(includedir)/ffts
 libffts_include_HEADERS = ../include/ffts.h
 AM_CFLAGS = -I$(top_srcdir)/include -DAUTOTOOLS_BUILD=yes

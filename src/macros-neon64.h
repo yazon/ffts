@@ -81,10 +81,10 @@ typedef float32x2_t   V2SF;       /* 2 × 32-bit float (maps to Dx register) */
 
 /* Optimized for AArch64: Use UZP1/UZP2 instructions for better performance */
 #define V4SF_UNPACK_HI(a,b) \
-    (vuzp2q_f32(a, b))             /* UZP2 - de-interleave odd lanes */
+    (vcombine_f32(vget_high_f32(a), vget_high_f32(b)))  /* Get high pairs from both vectors */
 
 #define V4SF_UNPACK_LO(a,b) \
-    (vuzp1q_f32(a, b))             /* UZP1 - de-interleave even lanes */
+    (vcombine_f32(vget_low_f32(a), vget_low_f32(b)))    /* Get low pairs from both vectors */
 
 /* Alternative implementation using traditional combine approach */
 #define V4SF_BLEND(x,y) \
@@ -115,10 +115,13 @@ V4SF_LIT4(float f3, float f2, float f1, float f0)
 static FFTS_ALWAYS_INLINE V4SF
 V4SF_IMULI(int inv, V4SF a)
 {
+    /* Fix: Use correct sign patterns for forward vs inverse transforms */
     if (inv) {
-        return V4SF_SWAP_PAIRS(V4SF_XOR(a, V4SF_LIT4(0.0f, -0.0f, 0.0f, -0.0f)));
+        /* Inverse: multiply by +i, swap and negate real parts */
+        return V4SF_XOR(V4SF_SWAP_PAIRS(a), V4SF_LIT4(-0.0f, 0.0f, -0.0f, 0.0f));
     } else {
-        return V4SF_SWAP_PAIRS(V4SF_XOR(a, V4SF_LIT4(-0.0f, 0.0f, -0.0f, 0.0f)));
+        /* Forward: multiply by -i, swap and negate imaginary parts */  
+        return V4SF_XOR(V4SF_SWAP_PAIRS(a), V4SF_LIT4(0.0f, -0.0f, 0.0f, -0.0f));
     }
 }
 
@@ -126,18 +129,27 @@ V4SF_IMULI(int inv, V4SF a)
 static FFTS_ALWAYS_INLINE V4SF
 V4SF_IMUL(V4SF d, V4SF re, V4SF im)
 {
-    re = V4SF_MUL(re, d);
-    im = V4SF_MUL(im, V4SF_SWAP_PAIRS(d));
-    return V4SF_SUB(re, im);
+    /* Complex multiplication: (re + i*im) * d */
+    /* d is organized as [d_re, d_im, d_re, d_im] for two complex numbers */
+    V4SF d_swapped = V4SF_SWAP_PAIRS(d);  /* [d_im, d_re, d_im, d_re] */
+    
+    V4SF temp1 = V4SF_MUL(re, d);         /* re * d */
+    V4SF temp2 = V4SF_MUL(im, d_swapped); /* im * d_swapped */
+    
+    return V4SF_SUB(temp1, temp2);        /* (re*d_re - im*d_im) + i*(re*d_im + im*d_re) */
 }
 
 /* Complex conjugate multiplication using AArch64 FMLA */
 static FFTS_ALWAYS_INLINE V4SF
 V4SF_IMULJ(V4SF d, V4SF re, V4SF im)
 {
-    re = V4SF_MUL(re, d);
-    im = V4SF_MUL(im, V4SF_SWAP_PAIRS(d));
-    return V4SF_ADD(re, im);
+    /* Complex conjugate multiplication: (re + i*im) * conj(d) */
+    V4SF d_swapped = V4SF_SWAP_PAIRS(d);  /* [d_im, d_re, d_im, d_re] */
+    
+    V4SF temp1 = V4SF_MUL(re, d);         /* re * d */
+    V4SF temp2 = V4SF_MUL(im, d_swapped); /* im * d_swapped */
+    
+    return V4SF_ADD(temp1, temp2);        /* (re*d_re + im*d_im) + i*(im*d_re - re*d_im) */
 }
 
 /* Advanced AArch64 NEON operations using FMLA/FMLS */

@@ -108,5 +108,12 @@ echo "Headers: $INSTALL_DIR/include/"
 # Optional: Create a simple test if we can run ARM64 binaries
 if command -v qemu-aarch64 &> /dev/null && [ "$TOOLCHAIN" = "aarch64-linux-gnu" ]; then
     echo "Testing with QEMU..."
-    qemu-aarch64 -L /usr/aarch64-linux-gnu "$INSTALL_DIR/bin/ffts_test" || true
+    # Look for test executable in tests directory (autotools build)
+    if [ -f "tests/test" ]; then
+        qemu-aarch64 -L /usr/aarch64-linux-gnu tests/test || true
+    elif [ -f "build/ffts_test" ]; then
+        qemu-aarch64 -L /usr/aarch64-linux-gnu build/ffts_test || true
+    else
+        echo "No test executable found to run with QEMU"
+    fi
 fi 

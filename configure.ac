@@ -51,6 +51,13 @@ if test "$have_neon" = "yes"; then
 fi
 AM_CONDITIONAL(HAVE_NEON, test "$have_neon" = "yes")
 
+AC_ARG_ENABLE(arm64, [AC_HELP_STRING([--enable-arm64],[enable ARM64/AArch64 optimizations])], have_arm64=$enableval, have_arm64=no)
+if test "$have_arm64" = "yes"; then
+	AC_DEFINE(HAVE_ARM64,1,[Define to enable ARM64/AArch64 optimizations.])
+	AC_DEFINE(HAVE_NEON,1,[Define to FFT with ARM NEON (AArch64 includes NEON).])
+fi
+AM_CONDITIONAL(HAVE_ARM64, test "$have_arm64" = "yes")
+
 AC_ARG_ENABLE(vfp, [AC_HELP_STRING([--enable-vfp],[enable VFP extensions])], have_vfp=$enableval, have_vfp=no)
 if test "$have_vfp" = "yes"; then
 	AC_DEFINE(HAVE_VFP,1,[Define to FFT with ARM VFP.])
@@ -88,6 +95,17 @@ AS_IF([test "$have_vfp" = "yes"],[fpu="-mfpu=vfp"],
 
 AC_MSG_NOTICE([host is "${host}"])
 case "${host}" in
+	aarch64* | arm64* )
+		# ARM64/AArch64 architecture - NEON is always available
+		CFLAGS="$CFLAGS -march=armv8-a -std=c99"
+		CCASFLAGS="$CCASFLAGS -march=armv8-a"
+		# Auto-enable ARM64 optimizations for AArch64 hosts
+		if test "$have_arm64" = "no"; then
+			have_arm64=yes
+			AC_DEFINE(HAVE_ARM64,1,[Define to enable ARM64/AArch64 optimizations.])
+			AC_DEFINE(HAVE_NEON,1,[Define to FFT with ARM NEON (AArch64 includes NEON).])
+		fi
+		;;
 	arm* )
 		CFLAGS="$CFLAGS -mfloat-abi=${float_abi} ${fpu} -std=c99"
 		CCASFLAGS="$CCASFLAGS -mfloat-abi=${float_abi} ${fpu}"

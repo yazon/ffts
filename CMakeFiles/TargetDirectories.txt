@@ -1,0 +1,15 @@
+/home/jason/ai/ffts/CMakeFiles/ffts_static.dir
+/home/jason/ai/ffts/CMakeFiles/ffts_test.dir
+/home/jason/ai/ffts/CMakeFiles/ffts_test_arm64_performance.dir
+/home/jason/ai/ffts/CMakeFiles/ffts_test_arm64.dir
+/home/jason/ai/ffts/CMakeFiles/ffts_test_arm64_validation.dir
+/home/jason/ai/ffts/CMakeFiles/ffts_test_arm64_cross_platform.dir
+/home/jason/ai/ffts/CMakeFiles/ffts_test_arm64_performance_validation.dir
+/home/jason/ai/ffts/CMakeFiles/test_arm64_performance.dir
+/home/jason/ai/ffts/CMakeFiles/test_arm64_complete.dir
+/home/jason/ai/ffts/CMakeFiles/edit_cache.dir
+/home/jason/ai/ffts/CMakeFiles/rebuild_cache.dir
+/home/jason/ai/ffts/CMakeFiles/list_install_components.dir
+/home/jason/ai/ffts/CMakeFiles/install.dir
+/home/jason/ai/ffts/CMakeFiles/install/local.dir
+/home/jason/ai/ffts/CMakeFiles/install/strip.dir

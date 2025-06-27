@@ -1,0 +1,2 @@
+/usr/bin/ar qc libffts.a CMakeFiles/ffts_static.dir/src/ffts.c.o CMakeFiles/ffts_static.dir/src/ffts_chirp_z.c.o CMakeFiles/ffts_static.dir/src/ffts_nd.c.o CMakeFiles/ffts_static.dir/src/ffts_real.c.o CMakeFiles/ffts_static.dir/src/ffts_real_nd.c.o CMakeFiles/ffts_static.dir/src/ffts_transpose.c.o CMakeFiles/ffts_static.dir/src/ffts_trig.c.o CMakeFiles/ffts_static.dir/src/ffts_static.c.o CMakeFiles/ffts_static.dir/src/codegen.c.o
+/usr/bin/ranlib libffts.a

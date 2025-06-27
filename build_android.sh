@@ -25,17 +25,26 @@ case arm in
     TARGPLAT=arm-linux-androideabi
     ARCH=arm
     CONFTARG=arm-eabi
+    FFTS_ARCH_FLAGS="--enable-neon"
+  ;;
+  arm64)
+    TARGPLAT=aarch64-linux-android
+    ARCH=arm64
+    CONFTARG=aarch64-linux-android
+    FFTS_ARCH_FLAGS="--enable-arm64"
   ;;
   x86)
     TARGPLAT=x86
     ARCH=x86
     CONFTARG=x86
+    FFTS_ARCH_FLAGS=""
   ;;
   mips)
   ## probably wrong
     TARGPLAT=mipsel-linux-android
     ARCH=mips
     CONFTARG=mips
+    FFTS_ARCH_FLAGS=""
   ;;
   *) echo $0: Unknown target; exit
 esac
@@ -54,7 +63,7 @@ export STRIP="${TARGPLAT}-strip"
 export CFLAGS="-Os"
 
 mkdir -p $INSTALL_DIR
-./configure --enable-neon --build=${CONFBUILD} --host=${CONFTARG} --prefix=$INSTALL_DIR LIBS="-lc -lgcc"
+./configure ${FFTS_ARCH_FLAGS} --build=${CONFBUILD} --host=${CONFTARG} --prefix=$INSTALL_DIR LIBS="-lc -lgcc"
 
 make clean
 make

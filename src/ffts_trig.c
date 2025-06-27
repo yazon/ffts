@@ -37,11 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *  For more information on algorithms:
 *
 *  D. Potts, G. Steidl, M. Tasche, Numerical stability of fast
-*  trigonometric transforms — a worst case study,
-*  J. Concrete Appl. Math. 1 (2003) 1–36
+*  trigonometric transforms ï¿½ a worst case study,
+*  J. Concrete Appl. Math. 1 (2003) 1ï¿½36
 *
-*  O. Buneman, Stable on–line creation of sines and cosines of
-*  successive angles, Proc. IEEE 75, 1434 – 1435 (1987).
+*  O. Buneman, Stable onï¿½line creation of sines and cosines of
+*  successive angles, Proc. IEEE 75, 1434 ï¿½ 1435 (1987).
 */
 
 /* An union to initialize doubles using byte presentation,

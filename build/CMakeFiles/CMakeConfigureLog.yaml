@@ -1,0 +1,973 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake:233 (message)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      The system is: Linux - 6.11.0-26-generic - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /home/jason/ai/ffts/build/CMakeFiles/3.28.3/CompilerIdC/a.out
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:1131 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineASMCompiler.cmake:131 (CMAKE_DETERMINE_COMPILER_ID_VENDOR)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Checking whether the ASM compiler is GNU using "--version" matched "(GNU assembler)|(GCC)|(Free Software Foundation)":
+      cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+      Copyright (C) 2023 Free Software Foundation, Inc.
+      This is free software; see the source for copying conditions.  There is NO
+      warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d38e7/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_d38e7.dir/build.make CMakeFiles/cmTC_d38e7.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc'
+        Building C object CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -v -o CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d38e7.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_d38e7.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccUPKWil.s
+        GNU C17 (Ubuntu 13.3.0-6ubuntu2~24.04) version 13.3.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-linux-gnu/13/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        Compiler executable checksum: 38987c28e967c64056a6454abdef726e
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d38e7.dir/'
+         as -v --64 -o CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o /tmp/ccUPKWil.s
+        GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_d38e7
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d38e7.dir/link.txt --verbose=1
+        /usr/bin/cc  -v -rdynamic CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o -o cmTC_d38e7 
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) 
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-rdynamic' '-o' 'cmTC_d38e7' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d38e7.'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cc6GgRPg.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d38e7 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+        COLLECT_GCC_OPTIONS='-v' '-rdynamic' '-o' 'cmTC_d38e7' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d38e7.'
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:127 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-linux-gnu/13/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/13/include] ==> [/usr/lib/gcc/x86_64-linux-gnu/13/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/gcc/x86_64-linux-gnu/13/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:159 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d38e7/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_d38e7.dir/build.make CMakeFiles/cmTC_d38e7.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-CAEKLc']
+        ignore line: [Building C object CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d38e7.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_d38e7.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccUPKWil.s]
+        ignore line: [GNU C17 (Ubuntu 13.3.0-6ubuntu2~24.04) version 13.3.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: 38987c28e967c64056a6454abdef726e]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d38e7.dir/']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o /tmp/ccUPKWil.s]
+        ignore line: [GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_d38e7]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d38e7.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc  -v -rdynamic CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o -o cmTC_d38e7 ]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-13-fG75Ri/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) ]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-rdynamic' '-o' 'cmTC_d38e7' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_d38e7.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/cc6GgRPg.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -export-dynamic -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d38e7 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/cc6GgRPg.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-export-dynamic] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-znow] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_d38e7] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..]
+          arg [CMakeFiles/cmTC_d38e7.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o] ==> [/usr/lib/x86_64-linux-gnu/crtn.o]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13] ==> [/usr/lib/gcc/x86_64-linux-gnu/13]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> [/usr/lib]
+        implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+        implicit objs: [/usr/lib/x86_64-linux-gnu/Scrt1.o;/usr/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o;/usr/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/13;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:60 (check_include_file)"
+    checks:
+      - "Looking for malloc.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-IKrRkz"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-IKrRkz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_MALLOC_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-IKrRkz'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_69bfd/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_69bfd.dir/build.make CMakeFiles/cmTC_69bfd.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-IKrRkz'
+        Building C object CMakeFiles/cmTC_69bfd.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_69bfd.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-IKrRkz/CheckIncludeFile.c
+        Linking C executable cmTC_69bfd
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_69bfd.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_69bfd.dir/CheckIncludeFile.c.o -o cmTC_69bfd 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-IKrRkz'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:61 (check_include_file)"
+    checks:
+      - "Looking for mm_malloc.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-SM5Ryy"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-SM5Ryy"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_MM_MALLOC_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-SM5Ryy'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_bd5eb/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_bd5eb.dir/build.make CMakeFiles/cmTC_bd5eb.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-SM5Ryy'
+        Building C object CMakeFiles/cmTC_bd5eb.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_bd5eb.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-SM5Ryy/CheckIncludeFile.c
+        Linking C executable cmTC_bd5eb
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bd5eb.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_bd5eb.dir/CheckIncludeFile.c.o -o cmTC_bd5eb 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-SM5Ryy'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:62 (check_include_file)"
+    checks:
+      - "Looking for stdint.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-3XAMmH"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-3XAMmH"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_STDINT_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-3XAMmH'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ca8c6/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ca8c6.dir/build.make CMakeFiles/cmTC_ca8c6.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-3XAMmH'
+        Building C object CMakeFiles/cmTC_ca8c6.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_ca8c6.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-3XAMmH/CheckIncludeFile.c
+        Linking C executable cmTC_ca8c6
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ca8c6.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_ca8c6.dir/CheckIncludeFile.c.o -o cmTC_ca8c6 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-3XAMmH'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:63 (check_include_file)"
+    checks:
+      - "Looking for stdlib.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-gyR7kx"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-gyR7kx"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_STDLIB_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-gyR7kx'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7ebfa/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7ebfa.dir/build.make CMakeFiles/cmTC_7ebfa.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-gyR7kx'
+        Building C object CMakeFiles/cmTC_7ebfa.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_7ebfa.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-gyR7kx/CheckIncludeFile.c
+        Linking C executable cmTC_7ebfa
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7ebfa.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_7ebfa.dir/CheckIncludeFile.c.o -o cmTC_7ebfa 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-gyR7kx'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:64 (check_include_file)"
+    checks:
+      - "Looking for string.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-XGziVg"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-XGziVg"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_STRING_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-XGziVg'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_5390a/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_5390a.dir/build.make CMakeFiles/cmTC_5390a.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-XGziVg'
+        Building C object CMakeFiles/cmTC_5390a.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_5390a.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-XGziVg/CheckIncludeFile.c
+        Linking C executable cmTC_5390a
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5390a.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_5390a.dir/CheckIncludeFile.c.o -o cmTC_5390a 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-XGziVg'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:65 (check_include_file)"
+    checks:
+      - "Looking for sys/mman.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-YdnPYm"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-YdnPYm"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_SYS_MMAN_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-YdnPYm'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_07ee0/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_07ee0.dir/build.make CMakeFiles/cmTC_07ee0.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-YdnPYm'
+        Building C object CMakeFiles/cmTC_07ee0.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_07ee0.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-YdnPYm/CheckIncludeFile.c
+        Linking C executable cmTC_07ee0
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_07ee0.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_07ee0.dir/CheckIncludeFile.c.o -o cmTC_07ee0 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-YdnPYm'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:66 (check_include_file)"
+    checks:
+      - "Looking for unistd.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-6lXXoa"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-6lXXoa"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_UNISTD_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-6lXXoa'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_2b250/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_2b250.dir/build.make CMakeFiles/cmTC_2b250.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-6lXXoa'
+        Building C object CMakeFiles/cmTC_2b250.dir/CheckIncludeFile.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_2b250.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-6lXXoa/CheckIncludeFile.c
+        Linking C executable cmTC_2b250
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_2b250.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_2b250.dir/CheckIncludeFile.c.o -o cmTC_2b250 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-6lXXoa'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "CMakeLists.txt:97 (check_symbol_exists)"
+    checks:
+      - "Looking for aligned_alloc"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-5mvVM6"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-5mvVM6"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_DECL_ALIGNED_ALLOC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-5mvVM6'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_3b4e9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_3b4e9.dir/build.make CMakeFiles/cmTC_3b4e9.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-5mvVM6'
+        Building C object CMakeFiles/cmTC_3b4e9.dir/CheckSymbolExists.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_3b4e9.dir/CheckSymbolExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-5mvVM6/CheckSymbolExists.c
+        Linking C executable cmTC_3b4e9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3b4e9.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_3b4e9.dir/CheckSymbolExists.c.o -o cmTC_3b4e9 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-5mvVM6'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "CMakeLists.txt:98 (check_symbol_exists)"
+    checks:
+      - "Looking for memalign"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-xGZgP2"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-xGZgP2"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_DECL_MEMALIGN"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-xGZgP2'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f6005/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_f6005.dir/build.make CMakeFiles/cmTC_f6005.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-xGZgP2'
+        Building C object CMakeFiles/cmTC_f6005.dir/CheckSymbolExists.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_f6005.dir/CheckSymbolExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-xGZgP2/CheckSymbolExists.c
+        Linking C executable cmTC_f6005
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f6005.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_f6005.dir/CheckSymbolExists.c.o -o cmTC_f6005 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-xGZgP2'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "CMakeLists.txt:99 (check_symbol_exists)"
+    checks:
+      - "Looking for posix_memalign"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-D1R57h"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-D1R57h"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_DECL_POSIX_MEMALIGN"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-D1R57h'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b98b9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_b98b9.dir/build.make CMakeFiles/cmTC_b98b9.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-D1R57h'
+        Building C object CMakeFiles/cmTC_b98b9.dir/CheckSymbolExists.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_b98b9.dir/CheckSymbolExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-D1R57h/CheckSymbolExists.c
+        Linking C executable cmTC_b98b9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b98b9.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_b98b9.dir/CheckSymbolExists.c.o -o cmTC_b98b9 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-D1R57h'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "CMakeLists.txt:100 (check_symbol_exists)"
+    checks:
+      - "Looking for valloc"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-FLWmcW"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-FLWmcW"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_DECL_VALLOC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-FLWmcW'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_52484/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_52484.dir/build.make CMakeFiles/cmTC_52484.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-FLWmcW'
+        Building C object CMakeFiles/cmTC_52484.dir/CheckSymbolExists.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_52484.dir/CheckSymbolExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-FLWmcW/CheckSymbolExists.c
+        Linking C executable cmTC_52484
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_52484.dir/link.txt --verbose=1
+        /usr/bin/cc -rdynamic CMakeFiles/cmTC_52484.dir/CheckSymbolExists.c.o -o cmTC_52484 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-FLWmcW'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "CMakeLists.txt:101 (check_symbol_exists)"
+    checks:
+      - "Looking for _mm_malloc"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_DECL__MM_MALLOC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b2c02/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_b2c02.dir/build.make CMakeFiles/cmTC_b2c02.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub'
+        Building C object CMakeFiles/cmTC_b2c02.dir/CheckSymbolExists.c.o
+        /usr/bin/cc    -o CMakeFiles/cmTC_b2c02.dir/CheckSymbolExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub/CheckSymbolExists.c
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub/CheckSymbolExists.c: In function ‘main’:
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub/CheckSymbolExists.c:8:19: error: ‘_mm_malloc’ undeclared (first use in this function); did you mean ‘malloc’?
+            8 |   return ((int*)(&_mm_malloc))[argc];
+              |                   ^~~~~~~~~~
+              |                   malloc
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub/CheckSymbolExists.c:8:19: note: each undeclared identifier is reported only once for each function it appears in
+        gmake[1]: *** [CMakeFiles/cmTC_b2c02.dir/build.make:78: CMakeFiles/cmTC_b2c02.dir/CheckSymbolExists.c.o] Error 1
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fW65Ub'
+        gmake: *** [Makefile:127: cmTC_b2c02/fast] Error 2
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckFunctionExists.cmake:86 (try_compile)"
+      - "CMakeLists.txt:124 (check_function_exists)"
+    checks:
+      - "Looking for aligned_alloc"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_ALIGNED_ALLOC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_5d63f/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_5d63f.dir/build.make CMakeFiles/cmTC_5d63f.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft'
+        Building C object CMakeFiles/cmTC_5d63f.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=aligned_alloc -o CMakeFiles/cmTC_5d63f.dir/CheckFunctionExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft/CheckFunctionExists.c
+        <command-line>: warning: conflicting types for built-in function ‘aligned_alloc’; expected ‘void *(long unsigned int,  long unsigned int)’ [-Wbuiltin-declaration-mismatch]
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft/CheckFunctionExists.c:7:3: note: in expansion of macro ‘CHECK_FUNCTION_EXISTS’
+            7 |   CHECK_FUNCTION_EXISTS(void);
+              |   ^~~~~~~~~~~~~~~~~~~~~
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft/CheckFunctionExists.c:1:1: note: ‘aligned_alloc’ is declared in header ‘<stdlib.h>’
+          +++ |+#include <stdlib.h>
+            1 | #ifdef CHECK_FUNCTION_EXISTS
+        Linking C executable cmTC_5d63f
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5d63f.dir/link.txt --verbose=1
+        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=aligned_alloc -rdynamic CMakeFiles/cmTC_5d63f.dir/CheckFunctionExists.c.o -o cmTC_5d63f 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-tannft'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckFunctionExists.cmake:86 (try_compile)"
+      - "CMakeLists.txt:125 (check_function_exists)"
+    checks:
+      - "Looking for memalign"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-1VPsYH"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-1VPsYH"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_MEMALIGN"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-1VPsYH'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_5e748/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_5e748.dir/build.make CMakeFiles/cmTC_5e748.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-1VPsYH'
+        Building C object CMakeFiles/cmTC_5e748.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=memalign -o CMakeFiles/cmTC_5e748.dir/CheckFunctionExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-1VPsYH/CheckFunctionExists.c
+        Linking C executable cmTC_5e748
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5e748.dir/link.txt --verbose=1
+        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=memalign -rdynamic CMakeFiles/cmTC_5e748.dir/CheckFunctionExists.c.o -o cmTC_5e748 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-1VPsYH'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckFunctionExists.cmake:86 (try_compile)"
+      - "CMakeLists.txt:126 (check_function_exists)"
+    checks:
+      - "Looking for posix_memalign"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_POSIX_MEMALIGN"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1890f/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1890f.dir/build.make CMakeFiles/cmTC_1890f.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp'
+        Building C object CMakeFiles/cmTC_1890f.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=posix_memalign -o CMakeFiles/cmTC_1890f.dir/CheckFunctionExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp/CheckFunctionExists.c
+        <command-line>: warning: conflicting types for built-in function ‘posix_memalign’; expected ‘int(void **, long unsigned int,  long unsigned int)’ [-Wbuiltin-declaration-mismatch]
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp/CheckFunctionExists.c:7:3: note: in expansion of macro ‘CHECK_FUNCTION_EXISTS’
+            7 |   CHECK_FUNCTION_EXISTS(void);
+              |   ^~~~~~~~~~~~~~~~~~~~~
+        Linking C executable cmTC_1890f
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1890f.dir/link.txt --verbose=1
+        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=posix_memalign -rdynamic CMakeFiles/cmTC_1890f.dir/CheckFunctionExists.c.o -o cmTC_1890f 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fb8wnp'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckFunctionExists.cmake:86 (try_compile)"
+      - "CMakeLists.txt:127 (check_function_exists)"
+    checks:
+      - "Looking for valloc"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ezqnlA"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ezqnlA"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_VALLOC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ezqnlA'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8049d/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_8049d.dir/build.make CMakeFiles/cmTC_8049d.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ezqnlA'
+        Building C object CMakeFiles/cmTC_8049d.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=valloc -o CMakeFiles/cmTC_8049d.dir/CheckFunctionExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ezqnlA/CheckFunctionExists.c
+        Linking C executable cmTC_8049d
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8049d.dir/link.txt --verbose=1
+        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=valloc -rdynamic CMakeFiles/cmTC_8049d.dir/CheckFunctionExists.c.o -o cmTC_8049d 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ezqnlA'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckFunctionExists.cmake:86 (try_compile)"
+      - "CMakeLists.txt:128 (check_function_exists)"
+    checks:
+      - "Looking for _mm_malloc"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ieZkmi"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ieZkmi"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE__MM_MALLOC"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ieZkmi'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_95da8/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_95da8.dir/build.make CMakeFiles/cmTC_95da8.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ieZkmi'
+        Building C object CMakeFiles/cmTC_95da8.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=_mm_malloc -o CMakeFiles/cmTC_95da8.dir/CheckFunctionExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ieZkmi/CheckFunctionExists.c
+        Linking C executable cmTC_95da8
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_95da8.dir/link.txt --verbose=1
+        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=_mm_malloc -rdynamic CMakeFiles/cmTC_95da8.dir/CheckFunctionExists.c.o -o cmTC_95da8 
+        /usr/bin/ld: CMakeFiles/cmTC_95da8.dir/CheckFunctionExists.c.o: in function `main':
+        CheckFunctionExists.c:(.text+0x14): undefined reference to `_mm_malloc'
+        collect2: error: ld returned 1 exit status
+        gmake[1]: *** [CMakeFiles/cmTC_95da8.dir/build.make:99: cmTC_95da8] Error 1
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-ieZkmi'
+        gmake: *** [Makefile:127: cmTC_95da8/fast] Error 2
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:306 (check_include_file)"
+    checks:
+      - "Looking for xmmintrin.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-zPMMpn"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-zPMMpn"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_XMMINTRIN_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-zPMMpn'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_22a44/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_22a44.dir/build.make CMakeFiles/cmTC_22a44.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-zPMMpn'
+        Building C object CMakeFiles/cmTC_22a44.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -msse -o CMakeFiles/cmTC_22a44.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-zPMMpn/CheckIncludeFile.c
+        Linking C executable cmTC_22a44
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_22a44.dir/link.txt --verbose=1
+        /usr/bin/cc   -msse -rdynamic CMakeFiles/cmTC_22a44.dir/CheckIncludeFile.c.o -o cmTC_22a44 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-zPMMpn'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:318 (check_include_file)"
+    checks:
+      - "Looking for emmintrin.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fAjVi6"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fAjVi6"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_EMMINTRIN_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fAjVi6'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_5551b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_5551b.dir/build.make CMakeFiles/cmTC_5551b.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fAjVi6'
+        Building C object CMakeFiles/cmTC_5551b.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -msse -msse2 -o CMakeFiles/cmTC_5551b.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fAjVi6/CheckIncludeFile.c
+        Linking C executable cmTC_5551b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5551b.dir/link.txt --verbose=1
+        /usr/bin/cc   -msse -msse2 -rdynamic CMakeFiles/cmTC_5551b.dir/CheckIncludeFile.c.o -o cmTC_5551b 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-fAjVi6'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "CMakeLists.txt:330 (check_include_file)"
+    checks:
+      - "Looking for pmmintrin.h"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-znxeoM"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-znxeoM"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_PMMINTRIN_H"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-znxeoM'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b973b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_b973b.dir/build.make CMakeFiles/cmTC_b973b.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-znxeoM'
+        Building C object CMakeFiles/cmTC_b973b.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -msse -msse2 -msse3 -o CMakeFiles/cmTC_b973b.dir/CheckIncludeFile.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-znxeoM/CheckIncludeFile.c
+        Linking C executable cmTC_b973b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b973b.dir/link.txt --verbose=1
+        /usr/bin/cc   -msse -msse2 -msse3 -rdynamic CMakeFiles/cmTC_b973b.dir/CheckIncludeFile.c.o -o cmTC_b973b 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-znxeoM'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake-3.28/Modules/CheckCCompilerFlag.cmake:51 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:382 (check_c_compiler_flag)"
+    checks:
+      - "Performing Test HAVE_GCC_VISIBILITY"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-bHAauc"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-bHAauc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -Wall -Wextra"
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_GCC_VISIBILITY"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-bHAauc'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b4101/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_b4101.dir/build.make CMakeFiles/cmTC_b4101.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-bHAauc'
+        Building C object CMakeFiles/cmTC_b4101.dir/src.c.o
+        /usr/bin/cc -DHAVE_GCC_VISIBILITY  -Wall -Wextra  -msse -msse2 -msse3   -fvisibility=hidden -o CMakeFiles/cmTC_b4101.dir/src.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-bHAauc/src.c
+        Linking C executable cmTC_b4101
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b4101.dir/link.txt --verbose=1
+        /usr/bin/cc  -Wall -Wextra  -msse -msse2 -msse3 -rdynamic CMakeFiles/cmTC_b4101.dir/src.c.o -o cmTC_b4101 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-bHAauc'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckLibraryExists.cmake:69 (try_compile)"
+      - "CMakeLists.txt:389 (check_library_exists)"
+    checks:
+      - "Looking for pow in m"
+    directories:
+      source: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld"
+      binary: "/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -Wall -Wextra -fvisibility=hidden"
+      CMAKE_MODULE_PATH: "/home/jason/ai/ffts/cmake"
+    buildResult:
+      variable: "HAVE_LIBM"
+      cached: true
+      stdout: |
+        Change Dir: '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1a8f2/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1a8f2.dir/build.make CMakeFiles/cmTC_1a8f2.dir/build
+        gmake[1]: Entering directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld'
+        Building C object CMakeFiles/cmTC_1a8f2.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -Wall -Wextra -fvisibility=hidden -DCHECK_FUNCTION_EXISTS=pow  -msse -msse2 -msse3 -o CMakeFiles/cmTC_1a8f2.dir/CheckFunctionExists.c.o -c /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld/CheckFunctionExists.c
+        <command-line>: warning: conflicting types for built-in function ‘pow’; expected ‘double(double,  double)’ [-Wbuiltin-declaration-mismatch]
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld/CheckFunctionExists.c:7:3: note: in expansion of macro ‘CHECK_FUNCTION_EXISTS’
+            7 |   CHECK_FUNCTION_EXISTS(void);
+              |   ^~~~~~~~~~~~~~~~~~~~~
+        /home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld/CheckFunctionExists.c:1:1: note: ‘pow’ is declared in header ‘<math.h>’
+          +++ |+#include <math.h>
+            1 | #ifdef CHECK_FUNCTION_EXISTS
+        Linking C executable cmTC_1a8f2
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1a8f2.dir/link.txt --verbose=1
+        /usr/bin/cc  -Wall -Wextra -fvisibility=hidden -DCHECK_FUNCTION_EXISTS=pow  -msse -msse2 -msse3 -rdynamic CMakeFiles/cmTC_1a8f2.dir/CheckFunctionExists.c.o -o cmTC_1a8f2  -lm 
+        gmake[1]: Leaving directory '/home/jason/ai/ffts/build/CMakeFiles/CMakeScratch/TryCompile-GjEDld'
+        
+      exitCode: 0
+...

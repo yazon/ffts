@@ -1,0 +1,1 @@
+/usr/bin/cc  -Wall -Wextra -fvisibility=hidden -O3 -DNDEBUG -rdynamic CMakeFiles/ffts_test_arm64.dir/tests/test_arm64.c.o -o ffts_test_arm64  libffts.a -lm 

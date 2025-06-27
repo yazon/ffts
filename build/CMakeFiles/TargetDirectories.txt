@@ -1,0 +1,8 @@
+/home/jason/ai/ffts/build/CMakeFiles/ffts_static.dir
+/home/jason/ai/ffts/build/CMakeFiles/ffts_test.dir
+/home/jason/ai/ffts/build/CMakeFiles/edit_cache.dir
+/home/jason/ai/ffts/build/CMakeFiles/rebuild_cache.dir
+/home/jason/ai/ffts/build/CMakeFiles/list_install_components.dir
+/home/jason/ai/ffts/build/CMakeFiles/install.dir
+/home/jason/ai/ffts/build/CMakeFiles/install/local.dir
+/home/jason/ai/ffts/build/CMakeFiles/install/strip.dir

@@ -38,7 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 #endif
 
-#ifdef HAVE_NEON
+#if defined(HAVE_ARM64) && defined(__aarch64__)
+#include "macros-neon64.h"
+#elif defined(HAVE_NEON)
 #include "macros-neon.h"
 #elif HAVE_SSE
 #include "macros-sse.h"

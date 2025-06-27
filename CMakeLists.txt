@@ -30,6 +30,10 @@ option(ENABLE_VFP
   "Enables the use of VFP instructions." OFF
 )
 
+option(ENABLE_ARM64
+  "Enables ARM64/AArch64 optimizations." OFF
+)
+
 option(DISABLE_DYNAMIC_CODE
   "Disables the use of dynamic machine code generation." OFF
 )
@@ -152,7 +156,53 @@ set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
 
 # Determinate if we are cross-compiling
 if(NOT CMAKE_CROSSCOMPILING)
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+  # Add AArch64 detection first, before ARM 32-bit
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+    # AArch64 (ARM 64-bit) architecture detection
+    message("Detected AArch64/ARM64 architecture")
+
+    # Try to execute quietly without messages  
+    set(CMAKE_REQUIRED_QUIET 1)
+
+    # Test for AArch64 NEON support using arm_neon.h intrinsics
+    # Based on ARM AArch64 NEON Intrinsics Reference from the plan
+    set(TEST_SOURCE_CODE "
+      #include <arm_neon.h>
+      int main()
+      {
+        // Test AArch64 NEON with 128-bit operations
+        float32x4_t v1, v2, result;
+        float data[4] = {1.0f, 2.0f, 3.0f, 4.0f};
+        v1 = vld1q_f32(data);
+        v2 = vld1q_f32(data);
+        result = vaddq_f32(v1, v2);  // 128-bit vector addition
+        return 0;
+      }"
+    )
+
+    # AArch64 always has NEON available (part of base architecture)
+    # Test with standard AArch64 flags
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS_SAVE}")
+    check_c_source_runs("${TEST_SOURCE_CODE}" AARCH64_NEON_SUPPORTED)
+
+    if(AARCH64_NEON_SUPPORTED)
+      message("FFTS detected AArch64 with NEON support")
+      set(HAVE_ARM64 ON)
+      set(HAVE_NEON ON)
+      set(ENABLE_NEON ON)
+      add_definitions(-DHAVE_ARM64)
+      add_definitions(-DHAVE_NEON)
+      
+      # AArch64 optimal flags based on ARM documentation
+      if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a")
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv8-a")
+      endif()
+    else()
+      message(WARNING "AArch64 detected but NEON support test failed")
+    endif(AARCH64_NEON_SUPPORTED)
+
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
     # Determinate ARM architecture
 
     # Try to execute quietly without messages
@@ -433,15 +483,37 @@ set(FFTS_SOURCES
 )
 
 if(ENABLE_NEON)
-  list(APPEND FFTS_SOURCES
-    src/neon.s
-  )
-
-  if(DISABLE_DYNAMIC_CODE)
+  # Only add ARM assembly sources if actually building for ARM
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^arm64")
     list(APPEND FFTS_SOURCES
-      src/neon_static.s
+      src/neon.s
     )
-  endif(DISABLE_DYNAMIC_CODE)
+
+    if(DISABLE_DYNAMIC_CODE)
+      list(APPEND FFTS_SOURCES
+        src/neon_static.s
+      )
+    endif(DISABLE_DYNAMIC_CODE)
+
+    # Add ARM64-specific sources if detected
+    if(HAVE_ARM64)
+      list(APPEND FFTS_SOURCES
+        src/macros-neon64.h
+        src/neon64.s
+        src/ffts_runtime_arm64.c
+        src/ffts_runtime_arm64.h
+      )
+      
+      if(NOT DISABLE_DYNAMIC_CODE)
+        list(APPEND FFTS_SOURCES
+          src/arch/arm64/arm64-codegen.c
+          src/arch/arm64/arm64-codegen.h
+        )
+      endif(NOT DISABLE_DYNAMIC_CODE)
+    endif(HAVE_ARM64)
+  else()
+    message(STATUS "NEON enabled but not building for ARM architecture - skipping assembly sources")
+  endif()
 
   add_definitions(-DHAVE_NEON)
 elseif(ENABLE_VFP)
@@ -530,6 +602,75 @@ if(ENABLE_STATIC OR ENABLE_SHARED)
     ffts
     ${FFTS_EXTRA_LIBRARIES}
   )
+
+  # Add ARM64 performance validation test
+  if(HAVE_ARM64)
+    add_executable(ffts_test_arm64_performance
+      tests/test_arm64_performance.c
+    )
+    
+    target_link_libraries(ffts_test_arm64_performance
+      ffts
+      ${FFTS_EXTRA_LIBRARIES}
+    )
+
+    # Add ARM64 unit tests
+    add_executable(ffts_test_arm64
+      tests/test_arm64.c
+    )
+
+    target_link_libraries(ffts_test_arm64
+      ffts
+      ${FFTS_EXTRA_LIBRARIES}
+    )
+
+    # Add ARM64 validation tests
+    add_executable(ffts_test_arm64_validation
+      tests/test_arm64_validation.c
+    )
+
+    target_link_libraries(ffts_test_arm64_validation
+      ffts
+      ${FFTS_EXTRA_LIBRARIES}
+    )
+
+    # Add ARM64 cross-platform tests
+    add_executable(ffts_test_arm64_cross_platform
+      tests/test_arm64_cross_platform.c
+    )
+
+    target_link_libraries(ffts_test_arm64_cross_platform
+      ffts
+      ${FFTS_EXTRA_LIBRARIES}
+    )
+
+    # Add ARM64 performance validation tests
+    add_executable(ffts_test_arm64_performance_validation
+      tests/test_arm64_performance_validation.c
+    )
+
+    target_link_libraries(ffts_test_arm64_performance_validation
+      ffts
+      ${FFTS_EXTRA_LIBRARIES}
+    )
+    
+    # Add custom target for ARM64 performance testing
+    add_custom_target(test_arm64_performance
+      COMMAND ffts_test_arm64_performance
+      DEPENDS ffts_test_arm64_performance
+      COMMENT "Running ARM64 performance validation tests"
+    )
+
+    # Add custom target for complete ARM64 testing
+    add_custom_target(test_arm64_complete
+      COMMAND ffts_test_arm64
+      COMMAND ffts_test_arm64_validation
+      COMMAND ffts_test_arm64_cross_platform
+      COMMAND ffts_test_arm64_performance_validation
+      DEPENDS ffts_test_arm64 ffts_test_arm64_validation ffts_test_arm64_cross_platform ffts_test_arm64_performance_validation
+      COMMENT "Running complete ARM64 test suite"
+    )
+  endif(HAVE_ARM64)
 endif(ENABLE_STATIC OR ENABLE_SHARED)
 
 # generate packageconfig file

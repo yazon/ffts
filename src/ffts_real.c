@@ -37,7 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ffts_trig.h"
 
 #ifdef HAVE_NEON
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
+#endif
 #elif HAVE_SSE
 #include <xmmintrin.h>
 

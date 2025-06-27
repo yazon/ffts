@@ -33,7 +33,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef FFTS_MACROS_NEON_H
 #define FFTS_MACROS_NEON_H
 
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
+#else
+// Dummy defines for non-ARM platforms
+typedef struct { float val[4]; } float32x4_t;
+typedef struct { float val[2]; } float32x2_t;
+#endif
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>

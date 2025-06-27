@@ -105,8 +105,7 @@ neon64_x4:
     // Y1 = C + D*(-i), Y3 = C - D*(-i) 
     // Use ARM64 complex arithmetic with rev64 for i multiplication
     rev64   v16.4s, v7.4s                  // Swap re/im: [im,re,im,re]
-    fneg    v17.2s, v16.2s                 // Negate real parts for -i multiplication
-    mov     v17.d[1], v16.d[1]             // Keep imaginary parts unchanged
+    eor     v17.16b, v16.16b, v20.16b      // v17 = {Im0, -Re0, Im1, -Re1}
     
     fadd    v1.4s, v6.4s, v17.4s          // Y1 = C + D*(-i)
     fsub    v3.4s, v6.4s, v17.4s          // Y3 = C - D*(-i)
@@ -262,7 +261,7 @@ large_copy_loop:
     stnp    q12, q13, [x0], #32
     stnp    q14, q15, [x0], #32
     
-    subs    x2, x2, #512
+    subs    x2, x2, #256
     b.hs    large_copy_loop
     
 small_copy:

@@ -84,16 +84,16 @@ neon64_static_e_i:
     stp     x21, x22, [sp, #32]
     stp     x23, x24, [sp, #48]
 
-    ldr     w30, [x0, #40]              // p->N
+    ldr     w30, [x0, #80]              // p->N
     ldr     x19, [x0]                   // p->offsets
-    ldr     x20, [x0, #16]              // p->ee_ws
+    ldr     x20, [x0, #32]              // p->ee_ws
     add     x21, x1, x30, lsl #2
     add     x22, x1, x30, lsl #3
     add     x23, x21, x30, lsl #3
     add     x24, x21, x30, lsl #2
     add     x25, x22, x30, lsl #3
     add     x26, x23, x30, lsl #3
-    ldr     w27, [x0, #28]              // p->i0
+    ldr     w27, [x0, #56]              // p->i0
     add     x28, x24, x30, lsl #3
 
     ld1     {v16.4s, v17.4s}, [x20]
@@ -234,16 +234,16 @@ neon64_static_o_i:
     stp     x21, x22, [sp, #32]
     stp     x23, x24, [sp, #48]
 
-    ldr     w30, [x0, #40]
+    ldr     w30, [x0, #80]
     ldr     x19, [x0]
-    ldr     x20, [x0, #16]
+    ldr     x20, [x0, #32]
     add     x21, x1, x30, lsl #2
     add     x22, x1, x30, lsl #3
     add     x23, x21, x30, lsl #3
     add     x24, x21, x30, lsl #2
     add     x25, x22, x30, lsl #3
     add     x26, x23, x30, lsl #3
-    ldr     w27, [x0, #28]
+    ldr     w27, [x0, #56]
     add     x28, x24, x30, lsl #3
 
     ld1     {v16.4s, v17.4s}, [x20]
@@ -447,9 +447,12 @@ neon64_static_x8_i:
     stp     x21, x22, [sp, #32]
     stp     x23, x24, [sp, #48]
 
-    mov     x19, x1
-    ldr     w20, [x0, #40]
-    ldr     x3, [x0, #16]
+    stp     x23, x24, [sp, #48]
+
+    // x0 = data pointer, x1 = N, x2 = ws pointer
+    mov     x19, x0              // base data pointer
+    mov     x20, x1              // N (loop counter) – keep full 64-bit value
+    mov     x3,  x2              // twiddle factor pointer (ws)
     add     x21, x19, #64
     add     x22, x19, #128
     add     x23, x19, #192
@@ -573,13 +576,13 @@ neon64_static_x8_t_i:
     stp     x21, x22, [sp, #32]
     stp     x23, x24, [sp, #48]
 
-    mov     x19, x1
-    ldr     w20, [x0, #40]
-    ldr     x3, [x0, #16]
+    stp     x23, x24, [sp, #48]
+
+    // x0 = data pointer, x1 = N, x2 = ws pointer
+    mov     x19, x0              // base data pointer
+    mov     x20, x1              // N (loop counter) – keep full 64-bit value
+    mov     x3,  x2              // twiddle factor pointer (ws)
     add     x21, x19, #64
-    add     x22, x19, #128
-    add     x23, x19, #192
-    mov     x12, x2
 
 1:  // Transposed 8-point loop
     ld1     {v16.4s, v17.4s}, [x3], #32

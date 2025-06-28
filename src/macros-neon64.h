@@ -51,7 +51,7 @@ typedef float32x4_t   V4SF;       /* 4 x 32-bit float (one 128-bit vector) */
 typedef float32x4x2_t V4SF2;      /* A pair of V4SF, used for LD2/ST2 results */
 
 /* Basic arithmetic operations using AArch64 NEON intrinsics */
-#define V4SF_ADD vsubq_f32         /* FADD Vd.4S,Vn.4S,Vm.4S */
+#define V4SF_ADD vaddq_f32         /* FADD Vd.4S,Vn.4S,Vm.4S */
 #define V4SF_SUB vsubq_f32         /* FSUB Vd.4S,Vn.4S,Vm.4S */
 #define V4SF_MUL vmulq_f32         /* FMUL Vd.4S,Vn.4S,Vm.4S */
 

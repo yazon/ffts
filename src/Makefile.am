@@ -2,12 +2,10 @@
 
 lib_LTLIBRARIES = libffts.la
 
-libffts_la_SOURCES = ffts.c ffts_nd.c ffts_real.c ffts_real_nd.c ffts_transpose.c ffts_trig.c ffts_static.c
+libffts_la_SOURCES = ffts.c ffts_nd.c ffts_real.c ffts_real_nd.c ffts_transpose.c ffts_trig.c ffts_static.c ffts_chirp_z.c
 libffts_la_SOURCES += codegen.h codegen_arm.h codegen_sse.h ffts.h ffts_nd.h ffts_real.h ffts_real_nd.h ffts_small.h ffts_static.h macros-alpha.h macros-altivec.h macros-neon.h macros-sse.h macros.h neon.h neon_float.h patterns.h types.h vfp.h
 
-if DYNAMIC_DISABLED
-libffts_la_SOURCES += ffts_static.c
-else
+if !DYNAMIC_DISABLED
 libffts_la_SOURCES += codegen.c
 endif
 
@@ -24,7 +22,7 @@ if HAVE_NEON
 libffts_la_SOURCES += neon.s
 
 if DYNAMIC_DISABLED
-libffts_la_SOURCES += neon_static_f.s neon_static_i.s
+libffts_la_SOURCES += neon_static.s
 endif
 
 else 

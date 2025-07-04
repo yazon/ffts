@@ -2,8 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT(ffts, 0.7, amb@anthonix.com)
-AM_INIT_AUTOMAKE(ffts, 0.7)
+AC_INIT([ffts], [0.7], [amb@anthonix.com])
+AM_INIT_AUTOMAKE([foreign -Wall subdir-objects])
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -13,11 +13,23 @@ AC_CONFIG_HEADERS([config.h])
 AC_CANONICAL_HOST
 
 # Checks for programs.
-AC_PROG_CXX
+case "${host}" in
+	arm-none-eabi)
+		AC_MSG_NOTICE([Bare-metal ARM, skipping C++ compiler check.])
+		AM_CONDITIONAL([AMDEP], [false])
+		AM_CONDITIONAL([am__fastdepCXX], [false])
+		;;
+	*)
+		AC_PROG_CXX
+		AM_CONDITIONAL([AMDEP], [true])
+		;;
+esac
 AC_PROG_CC
+AM_PROG_CC_C_O
 #AX_COMPILER_VENDOR
-LT_INIT([disable-shared])
 AM_PROG_AS
+AM_PROG_AR
+LT_INIT([disable-shared])
 #CXX="clang++"
 #CXXFLAGS="$CXXFLAGS -stdlib=libc++"
 
@@ -114,10 +126,8 @@ AC_CHECK_HEADERS([malloc.h stddef.h stdint.h stdlib.h string.h sys/mman.h sys/so
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_C_INLINE
-AC_TYPE_INT32_T
 AC_C_RESTRICT
 AC_TYPE_SIZE_T
-AC_TYPE_UINT64_T
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -125,7 +135,7 @@ AC_PROG_LIBTOOL
 
 # Checks for library functions.
 #AC_FUNC_MALLOC
-AC_CHECK_FUNCS([gettimeofday pow])
+AC_CHECK_FUNCS([gettimeofday pow mmap munmap mprotect qsort])
 
 
 AC_CONFIG_FILES([Makefile

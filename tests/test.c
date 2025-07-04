@@ -29,8 +29,12 @@
 
 */
 
+#define _POSIX_C_SOURCE 200112L  /* For posix_memalign */
 #include "../include/ffts.h"
 #include "../src/ffts_attributes.h"
+#include "../src/ffts_internal.h"
+
+#include <stddef.h> // Required for offsetof
 
 #ifdef __ARM_NEON__
 #endif
@@ -96,6 +100,35 @@ static float impulse_error(int N, int sign, float *data)
 #endif
 }
 
+void print_ffts_plan_offsets(void)
+{
+    printf("Offset of ee_ws: %zu\n", offsetof(struct _ffts_plan_t, ee_ws));
+    printf("Offset of is: %zu\n", offsetof(struct _ffts_plan_t, is));
+    printf("Offset of ws_is: %zu\n", offsetof(struct _ffts_plan_t, ws_is));
+    printf("Offset of i0: %zu\n", offsetof(struct _ffts_plan_t, i0));
+    printf("Offset of i1: %zu\n", offsetof(struct _ffts_plan_t, i1));
+    printf("Offset of n_luts: %zu\n", offsetof(struct _ffts_plan_t, n_luts));
+    printf("Offset of N: %zu\n", offsetof(struct _ffts_plan_t, N));
+    printf("Offset of lastlut: %zu\n", offsetof(struct _ffts_plan_t, lastlut));
+#ifdef __arm__
+    printf("Offset of temporary_fix_as_dynamic_code_assumes_fixed_offset: %zu\n", offsetof(struct _ffts_plan_t, temporary_fix_as_dynamic_code_assumes_fixed_offset));
+#endif
+    printf("Offset of transform: %zu\n", offsetof(struct _ffts_plan_t, transform));
+    printf("Offset of transform_base: %zu\n", offsetof(struct _ffts_plan_t, transform_base));
+    printf("Offset of transform_size: %zu\n", offsetof(struct _ffts_plan_t, transform_size));
+    printf("Offset of constants: %zu\n", offsetof(struct _ffts_plan_t, constants));
+    printf("Offset of plans: %zu\n", offsetof(struct _ffts_plan_t, plans));
+    printf("Offset of rank: %zu\n", offsetof(struct _ffts_plan_t, rank));
+    printf("Offset of Ns: %zu\n", offsetof(struct _ffts_plan_t, Ns));
+    printf("Offset of Ms: %zu\n", offsetof(struct _ffts_plan_t, Ms));
+    printf("Offset of buf: %zu\n", offsetof(struct _ffts_plan_t, buf));
+    printf("Offset of transpose_buf: %zu\n", offsetof(struct _ffts_plan_t, transpose_buf));
+    printf("Offset of destroy: %zu\n", offsetof(struct _ffts_plan_t, destroy));
+    printf("Offset of A: %zu\n", offsetof(struct _ffts_plan_t, A));
+    printf("Offset of B: %zu\n", offsetof(struct _ffts_plan_t, B));
+    printf("Offset of i2: %zu\n", offsetof(struct _ffts_plan_t, i2));
+}
+
 int test_transform(int n, int sign)
 {
     ffts_plan_t *p;
@@ -116,7 +149,7 @@ int test_transform(int n, int sign)
 
     input[2] = 1.0f;
 
-    p = ffts_init_1d(i, sign);
+    p = ffts_init_1d(n, sign);
     if (!p) {
         printf("Plan unsupported\n");
         return 0;
@@ -130,6 +163,8 @@ int test_transform(int n, int sign)
 
 int main(int argc, char *argv[])
 {
+    print_ffts_plan_offsets(); // Print offsets at the start of main
+
     if (argc == 3) {
         ffts_plan_t *p;
         int i;
@@ -153,7 +188,7 @@ int main(int argc, char *argv[])
 
         /* input[2] = 1.0f; */
 
-        p = ffts_init_1d(i, sign);
+        p = ffts_init_1d(n, sign);
         if (!p) {
             printf("Plan unsupported\n");
             return 0;

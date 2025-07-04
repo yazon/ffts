@@ -37,11 +37,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *  For more information on algorithms:
 *
 *  D. Potts, G. Steidl, M. Tasche, Numerical stability of fast
-*  trigonometric transforms — a worst case study,
-*  J. Concrete Appl. Math. 1 (2003) 1–36
+*  trigonometric transforms Â— a worst case study,
+*  J. Concrete Appl. Math. 1 (2003) 1Â–36
 *
-*  O. Buneman, Stable on–line creation of sines and cosines of
-*  successive angles, Proc. IEEE 75, 1434 – 1435 (1987).
+*  O. Buneman, Stable onÂ–line creation of sines and cosines of
+*  successive angles, Proc. IEEE 75, 1434 Â– 1435 (1987).
 */
 
 /* An union to initialize doubles using byte presentation,
@@ -881,7 +881,7 @@ int
 ffts_generate_cosine_sine_pow2_32f(ffts_cpx_32f *const table, int table_size)
 {
     const ffts_cpx_64f *FFTS_RESTRICT ct;
-    const double_t *FFTS_RESTRICT hs;
+    const ffts_double_t *FFTS_RESTRICT hs;
     ffts_cpx_64f FFTS_ALIGN(16) w[32];
     int i, log_2, offset;
 

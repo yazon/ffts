@@ -90,9 +90,15 @@ echo "  Architecture flags: $ARCH_FLAGS"
     $ARCH_FLAGS \
     --host=$CONFIGURE_HOST \
     --prefix="$INSTALL_DIR" \
-    --enable-static \
+    --enable-neon \
     --disable-shared \
-    --disable-dynamic-code
+# ./configure \
+#     $ARCH_FLAGS \
+#     --host=$CONFIGURE_HOST \
+#     --prefix="$INSTALL_DIR" \
+#     --enable-static \
+#     --disable-shared \
+#     --disable-dynamic-code
 
 echo "Building FFTS..."
 make clean

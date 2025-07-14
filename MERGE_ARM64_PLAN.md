@@ -27,22 +27,23 @@ This document tracks the step-by-step cherry-pick/merge process to enable **ARM6
 |:------:|------|
 | [x] | Add `src/arch/arm64/Makefile.am`. |
 | [x] | Patch `src/Makefile.am` with HAVE_ARM64 logic & source list. |
-| [ ] | Run `autoreconf -fi` to regenerate autotools files locally (will succeed after Phase 3 changes). |
+| [x] | Run `autoreconf -fi` to regenerate autotools files locally. |
 | [x] | Commit: **"Add Makefile rules for ARM64"** |
 
 ---
 ## Phase 3 – Configure-time Switch
 | Status | Task |
 |:------:|------|
-| [ ] | Apply minimal changes to `configure.ac`:<br/>&nbsp;&nbsp;• `AC_ARG_ENABLE(arm64 …)`<br/>&nbsp;&nbsp;• `AM_CONDITIONAL(HAVE_ARM64 …)`<br/>&nbsp;&nbsp;• host triplet case for `aarch64*`<br/>&nbsp;&nbsp;• `AC_DEFINE(HAVE_ARM64,1,…)` and related defines |
-| [ ] | Run `autoreconf -fi`, then `./configure --enable-arm64` to verify. |
-| [ ] | Commit: **"Introduce --enable-arm64 flag"** |
+| [x] | Apply minimal changes to `configure.ac`:<br/>&nbsp;&nbsp;• `AC_ARG_ENABLE(arm64 …)`<br/>&nbsp;&nbsp;• `AM_CONDITIONAL(HAVE_ARM64 …)`<br/>&nbsp;&nbsp;• host triplet case for `aarch64*`<br/>&nbsp;&nbsp;• `AC_DEFINE(HAVE_ARM64,1,…)` and related defines |
+| [x] | Run `autoreconf -fi`, then `./configure --enable-arm64` to verify. |
+| [x] | Commit: **"Introduce --enable-arm64 flag"** |
 
 ---
 ## Phase 4 – Helper Script
 | Status | Task |
 |:------:|------|
 | [ ] | Bring in `build_arm64.sh`, ensure it has executable bit and correct paths. |
+| [ ] | Make `build_arm64.sh`, similar to `build_arm32.sh`, must run tests at the end. |
 | [ ] | Commit. |
 
 ---

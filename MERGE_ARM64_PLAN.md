@@ -18,8 +18,8 @@ This document tracks the step-by-step cherry-pick/merge process to enable **ARM6
 ## Phase 1 – Source-level Support
 | Status | Task |
 |:------:|------|
-| [ ] | Copy new ARM64 sources & headers from `dev`:<br/>&nbsp;&nbsp;• src/arch/arm64/arm64-codegen.c<br/>&nbsp;&nbsp;• src/arch/arm64/arm64-codegen.h (replace stub)<br/>&nbsp;&nbsp;• src/codegen_arm64.h<br/>&nbsp;&nbsp;• src/ffts_runtime_arm64.c<br/>&nbsp;&nbsp;• src/ffts_runtime_arm64.h<br/>&nbsp;&nbsp;• src/macros-neon64.h<br/>&nbsp;&nbsp;• src/neon64.s<br/>&nbsp;&nbsp;• src/neon64_static.s |
-| [ ] | Commit: **"Add ARM64 codegen & runtime sources"** |
+| [x] | Copy new ARM64 sources & headers from `dev`:<br/>&nbsp;&nbsp;• src/arch/arm64/arm64-codegen.c<br/>&nbsp;&nbsp;• src/arch/arm64/arm64-codegen.h (replace stub)<br/>&nbsp;&nbsp;• src/codegen_arm64.h<br/>&nbsp;&nbsp;• src/ffts_runtime_arm64.c<br/>&nbsp;&nbsp;• src/ffts_runtime_arm64.h<br/>&nbsp;&nbsp;• src/macros-neon64.h<br/>&nbsp;&nbsp;• src/neon64.s<br/>&nbsp;&nbsp;• src/neon64_static.s |
+| [x] | Commit: **"Add ARM64 codegen & runtime sources"** |
 
 ---
 ## Phase 2 – Library Build Glue (Autotools)
@@ -93,6 +93,7 @@ cmake/arm64-toolchain.cmake
 
 ---
 ### Notes / Decisions
+* Never push changes to the remote.
 * We deliberately **exclude** every generated artefact from `dev` (Makefile.in, configure, CMakeFiles/**, compiled tests, etc.).
 * Regenerate autotools outputs locally after each phase.
 * Build-and-run checkpoints after each phase to catch regressions early. 

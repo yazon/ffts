@@ -17,6 +17,18 @@ AM_CFLAGS = -I$(top_srcdir)/include -DAUTOTOOLS_BUILD=yes
 if HAVE_VFP
 libffts_la_SOURCES += vfp.s 
 else
+
+if HAVE_ARM64
+# ARM64/AArch64 support - includes NEON automatically
+libffts_la_SOURCES += macros-neon64.h ffts_runtime_arm64.c ffts_runtime_arm64.h
+
+if !DYNAMIC_DISABLED
+libffts_la_SOURCES += arch/arm64/arm64-codegen.c
+else
+libffts_la_SOURCES += neon64_static.s
+endif
+
+else
 if HAVE_NEON
 
 libffts_la_SOURCES += neon.s
@@ -28,6 +40,7 @@ endif
 else 
 if HAVE_SSE
 libffts_la_SOURCES += macros-sse.h
+endif
 endif
 endif
 endif

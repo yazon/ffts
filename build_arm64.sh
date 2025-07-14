@@ -91,6 +91,7 @@ echo "  Architecture flags: $ARCH_FLAGS"
     --host=$CONFIGURE_HOST \
     --prefix="$INSTALL_DIR" \
     --enable-neon \
+    --enable-arm64 \
     --disable-shared \
 # ./configure \
 #     $ARCH_FLAGS \

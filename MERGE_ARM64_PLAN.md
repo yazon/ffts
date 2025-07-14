@@ -25,10 +25,10 @@ This document tracks the step-by-step cherry-pick/merge process to enable **ARM6
 ## Phase 2 – Library Build Glue (Autotools)
 | Status | Task |
 |:------:|------|
-| [ ] | Add `src/arch/arm64/Makefile.am`. |
-| [ ] | Patch `src/Makefile.am` with HAVE_ARM64 logic & source list. |
-| [ ] | Run `autoreconf -fi` to regenerate autotools files locally (do **not** import generated files). |
-| [ ] | Commit: **"Add Makefile rules for ARM64"** |
+| [x] | Add `src/arch/arm64/Makefile.am`. |
+| [x] | Patch `src/Makefile.am` with HAVE_ARM64 logic & source list. |
+| [ ] | Run `autoreconf -fi` to regenerate autotools files locally (will succeed after Phase 3 changes). |
+| [x] | Commit: **"Add Makefile rules for ARM64"** |
 
 ---
 ## Phase 3 – Configure-time Switch

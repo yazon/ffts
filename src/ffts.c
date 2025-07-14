@@ -44,6 +44,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "codegen.h"
 #endif
 
+#if defined(HAVE_ARM64) && defined(__aarch64__)
+#include "ffts_runtime_arm64.h"
+#endif
+
 #if _WIN32
 #include <windows.h>
 #else
@@ -433,6 +437,15 @@ ffts_init_1d(size_t N, int sign)
     if (N & (N - 1)) {
         return ffts_chirp_z_init(N, sign);
     }
+
+#if defined(HAVE_ARM64) && defined(__aarch64__)
+    /* Initialize ARM64 runtime detection if not already done */
+    static int arm64_initialized = 0;
+    if (!arm64_initialized) {
+        ffts_arm64_init_cpu_caps();
+        arm64_initialized = 1;
+    }
+#endif
 
     p = (ffts_plan_t*) calloc(1, sizeof(*p));
     if (!p) {

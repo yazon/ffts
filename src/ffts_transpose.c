@@ -37,7 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef HAVE_NEON
 #include "neon.h"
+#ifdef __ARM_NEON__
 #include <arm_neon.h>
+#endif
 #elif HAVE_SSE2
 #include <emmintrin.h>
 #endif

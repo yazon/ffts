@@ -42,9 +42,9 @@ This document tracks the step-by-step cherry-pick/merge process to enable **ARM6
 ## Phase 4 – Helper Script
 | Status | Task |
 |:------:|------|
-| [ ] | Bring in `build_arm64.sh`, ensure it has executable bit and correct paths. |
-| [ ] | Make `build_arm64.sh`, similar to `build_arm32.sh`, must run tests at the end. |
-| [ ] | Commit. |
+| [x] | Bring in `build_arm64.sh`, ensure it has executable bit and correct paths. |
+| [x] | Make `build_arm64.sh`, similar to `build_arm32.sh`, must run tests at the end. |
+| [x] | Commit. |
 
 ---
 ## Phase 5 – (OPTIONAL) CMake Path
@@ -55,11 +55,12 @@ This document tracks the step-by-step cherry-pick/merge process to enable **ARM6
 | [ ] | Commit if applied. |
 
 ---
-## Phase 6 – (OPTIONAL) Validation Tests
+## Phase 5 – Core Source Patches
 | Status | Task |
 |:------:|------|
-| [ ] | After successful build, cherry-pick test sources:<br/>&nbsp;&nbsp;• tests/test_arm64.c<br/>&nbsp;&nbsp;• tests/test_arm64_validation.c<br/>&nbsp;&nbsp;• tests/test_arm64_performance.c<br/>&nbsp;&nbsp;• scripts/validate_arm64.sh |
-| [ ] | Commit.
+| [x] | Cherry-pick ARM64-aware versions of core sources (`codegen.c`, `ffts.c`, `ffts_real.c`, `ffts_transpose.c`, `ffts_trig.c`, `macros-neon.h`, `macros.h`, `neon.s`). |
+| [ ] | Build & run `make -j$(nproc)` to confirm compilation succeeds. |
+| [ ] | Commit: **"Phase 5: ARM64 core source patches"** |
 
 ---
 ### Core Files Involved

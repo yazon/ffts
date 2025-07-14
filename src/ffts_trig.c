@@ -32,16 +32,38 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ffts_trig.h"
 #include "ffts_dd.h"
+#include "ffts_internal.h"
+
+#ifdef HAVE_MATH_H
+#include <math.h>
+#endif
+
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+/* For double_t typedef */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 /*
 *  For more information on algorithms:
 *
 *  D. Potts, G. Steidl, M. Tasche, Numerical stability of fast
-*  trigonometric transforms  a worst case study,
-*  J. Concrete Appl. Math. 1 (2003) 136
+*  trigonometric transforms a worst case study,
+*  J. Concrete Appl. Math. 1 (2003) 136
 *
-*  O. Buneman, Stable online creation of sines and cosines of
-*  successive angles, Proc. IEEE 75, 1434  1435 (1987).
+*  O. Buneman, Stable online creation of sines and cosines of
+*  successive angles, Proc. IEEE 75, 1434 1435 (1987).
 */
 
 /* An union to initialize doubles using byte presentation,

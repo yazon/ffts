@@ -20,12 +20,12 @@ else
 
 if HAVE_ARM64
 # ARM64/AArch64 support - includes NEON automatically
-libffts_la_SOURCES += macros-neon64.h ffts_runtime_arm64.c ffts_runtime_arm64.h
+libffts_la_SOURCES += macros-neon64.h ffts_runtime_arm64.c ffts_runtime_arm64.h neon64.s
 
-if !DYNAMIC_DISABLED
-libffts_la_SOURCES += arch/arm64/arm64-codegen.c
-else
+if DYNAMIC_DISABLED
 libffts_la_SOURCES += neon64_static.s
+else
+libffts_la_SOURCES += arch/arm64/arm64-codegen.c
 endif
 
 else

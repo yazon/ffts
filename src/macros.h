@@ -47,15 +47,19 @@ V4SF_K_N(int inv,
     uk2 = *r1;
 
     /*
-     * FIX: The original V4SF_IMUL took 3 arguments. The corrected version
-     * takes two interleaved complex vectors. We must create an interleaved
-     * twiddle factor vector from the separate real (re) and imag (im) parts.
-     * vzip1q_f32 is the perfect tool for this.
+     * ARM64 uses the new 2-argument complex-multiply helpers that expect
+     * an interleaved {re,im,re,im} vector. 32-bit NEON keeps the original
+     * 3-argument helpers (dst, re, im).  Select the proper call at compile
+     * time so both architectures build.
      */
-    V4SF tw = V4SF_UNPACK_LO(re, im); // UNPACK_LO is an alias for ZIP1
-
+#ifdef HAVE_ARM64
+    V4SF tw = V4SF_UNPACK_LO(re, im); /* build interleaved twiddle */
     zk_p = V4SF_IMUL(*r2, tw);
     zk_n = V4SF_IMULJ(*r3, tw);
+#else
+    zk_p = V4SF_IMUL(*r2, re, im);
+    zk_n = V4SF_IMULJ(*r3, re, im);
+#endif
 
     zk   = V4SF_ADD(zk_p, zk_n);
     zk_d = V4SF_IMULI(inv, V4SF_SUB(zk_p, zk_n));

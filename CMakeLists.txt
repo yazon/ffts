@@ -95,10 +95,6 @@ check_symbol_exists(_mm_malloc malloc.h HAVE_DECL__MM_MALLOC)
 # Add definitions for found functions
 foreach(func aligned_alloc memalign posix_memalign valloc _mm_malloc)
     string(TOUPPER "${func}" func_upper)
-    # Handle special case for _mm_malloc which has two underscores in the variable name
-    if(func STREQUAL "_mm_malloc")
-        set(func_upper "__MM_MALLOC")
-    endif()
     if(HAVE_DECL_${func_upper})
         add_compile_definitions(HAVE_DECL_${func_upper})
     endif()

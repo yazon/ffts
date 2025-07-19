@@ -93,9 +93,10 @@ check_symbol_exists(valloc stdlib.h HAVE_DECL_VALLOC)
 check_symbol_exists(_mm_malloc malloc.h HAVE_DECL__MM_MALLOC)
 
 # Add definitions for found functions
-foreach(func ALIGNED_ALLOC MEMALIGN POSIX_MEMALIGN VALLOC _MM_MALLOC)
-    if(HAVE_DECL_${func})
-        add_compile_definitions(HAVE_DECL_${func})
+foreach(func aligned_alloc memalign posix_memalign valloc _mm_malloc)
+    string(TOUPPER "${func}" func_upper)
+    if(HAVE_DECL_${func_upper})
+        add_compile_definitions(HAVE_DECL_${func_upper})
     endif()
 endforeach()
 
@@ -107,9 +108,10 @@ check_function_exists(valloc HAVE_VALLOC)
 check_function_exists(_mm_malloc HAVE__MM_MALLOC)
 
 # Add definitions for available functions
-foreach(func ALIGNED_ALLOC MEMALIGN POSIX_MEMALIGN VALLOC _MM_MALLOC)
-    if(HAVE_${func})
-        add_compile_definitions(HAVE_${func})
+foreach(func aligned_alloc memalign posix_memalign valloc _mm_malloc)
+    string(TOUPPER "${func}" func_upper)
+    if(HAVE_${func_upper})
+        add_compile_definitions(HAVE_${func_upper})
     endif()
 endforeach()
 

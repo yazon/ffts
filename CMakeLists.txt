@@ -79,7 +79,7 @@ check_include_file(sys/mman.h HAVE_SYS_MMAN_H)
 check_include_file(unistd.h HAVE_UNISTD_H)
 
 # Add definitions for found headers
-foreach(header malloc mm_malloc stdint stdlib string sys_mman unistd)
+foreach(header MALLOC MM_MALLOC STDINT STDLIB STRING SYS_MMAN UNISTD)
     if(HAVE_${header}_H)
         add_compile_definitions(HAVE_${header}_H)
     endif()
@@ -93,7 +93,7 @@ check_symbol_exists(valloc stdlib.h HAVE_DECL_VALLOC)
 check_symbol_exists(_mm_malloc malloc.h HAVE_DECL__MM_MALLOC)
 
 # Add definitions for found functions
-foreach(func aligned_alloc memalign posix_memalign valloc _mm_malloc)
+foreach(func ALIGNED_ALLOC MEMALIGN POSIX_MEMALIGN VALLOC _MM_MALLOC)
     if(HAVE_DECL_${func})
         add_compile_definitions(HAVE_DECL_${func})
     endif()
@@ -107,7 +107,7 @@ check_function_exists(valloc HAVE_VALLOC)
 check_function_exists(_mm_malloc HAVE__MM_MALLOC)
 
 # Add definitions for available functions
-foreach(func aligned_alloc memalign posix_memalign valloc _mm_malloc)
+foreach(func ALIGNED_ALLOC MEMALIGN POSIX_MEMALIGN VALLOC _MM_MALLOC)
     if(HAVE_${func})
         add_compile_definitions(HAVE_${func})
     endif()

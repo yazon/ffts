@@ -519,6 +519,38 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
+# Set up variables for fftsConfig.cmake.in substitution
+# These will be used to provide the correct compile definitions to external users
+if(ENABLE_NEON)
+    set(FFTS_NEON_DEFINE "list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_NEON)")
+else()
+    set(FFTS_NEON_DEFINE "# NEON not enabled")
+endif()
+
+if(ENABLE_VFP)
+    set(FFTS_VFP_DEFINE "list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_VFP)")
+else()
+    set(FFTS_VFP_DEFINE "# VFP not enabled")
+endif()
+
+if(HAVE_XMMINTRIN_H)
+    set(FFTS_SSE_DEFINE "list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_SSE)")
+else()
+    set(FFTS_SSE_DEFINE "# SSE not available")
+endif()
+
+if(HAVE_EMMINTRIN_H)
+    set(FFTS_SSE2_DEFINE "list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_SSE2)")
+else()
+    set(FFTS_SSE2_DEFINE "# SSE2 not available")
+endif()
+
+if(HAVE_PMMINTRIN_H OR HAVE__MM_MOVELDUP_PS)
+    set(FFTS_SSE3_DEFINE "list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_SSE3)")
+else()
+    set(FFTS_SSE3_DEFINE "# SSE3 not available")
+endif()
+
 configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/fftsConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/fftsConfig.cmake"
@@ -544,6 +576,11 @@ message(STATUS "  VFP support: ${ENABLE_VFP}")
 message(STATUS "  SSE support: ${HAVE_XMMINTRIN_H}")
 message(STATUS "  SSE2 support: ${HAVE_EMMINTRIN_H}")
 message(STATUS "  SSE3 support: ${HAVE_PMMINTRIN_H}")
-message(STATUS "  Dynamic code: ${NOT DISABLE_DYNAMIC_CODE}")
+if(DISABLE_DYNAMIC_CODE)
+    set(DYNAMIC_CODE_STATUS "Disabled")
+else()
+    set(DYNAMIC_CODE_STATUS "Enabled")
+endif()
+message(STATUS "  Dynamic code: ${DYNAMIC_CODE_STATUS}")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")

@@ -19,33 +19,19 @@ elseif(TARGET ffts::ffts_shared)
     set(FFTS_LIBRARIES ffts::ffts_shared)
 endif()
 
-# Set compile definitions
+# Set compile definitions that were used when building FFTS
+# These are determined at build time and substituted during installation
 set(FFTS_COMPILE_DEFINITIONS "")
 
-# Add architecture-specific definitions
-if(ENABLE_NEON)
-    list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_NEON)
-endif()
+# Add architecture-specific definitions that were enabled during build
+@FFTS_NEON_DEFINE@
+@FFTS_VFP_DEFINE@
+@FFTS_SSE_DEFINE@
+@FFTS_SSE2_DEFINE@
+@FFTS_SSE3_DEFINE@
 
-if(ENABLE_VFP)
-    list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_VFP)
-endif()
-
-if(HAVE_SSE)
-    list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_SSE)
-endif()
-
-if(HAVE_SSE2)
-    list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_SSE2)
-endif()
-
-if(HAVE_SSE3)
-    list(APPEND FFTS_COMPILE_DEFINITIONS HAVE_SSE3)
-endif()
-
-if(NOT DISABLE_DYNAMIC_CODE)
-    list(APPEND FFTS_COMPILE_DEFINITIONS FFTS_BUILD)
-endif()
+# Note: FFTS_BUILD is not included here as it's only used when building FFTS itself,
+# not when using FFTS as a library. External users should not define FFTS_BUILD.
 
 # Print configuration info
 message(STATUS "FFTS found: ${FFTS_VERSION}")

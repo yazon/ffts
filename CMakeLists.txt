@@ -307,11 +307,11 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
     
     # Add SSE definitions
     if(HAVE_PMMINTRIN_H)
-        add_compile_definitions(-msse3)
+        add_compile_options(-msse3)
     elseif(HAVE_EMMINTRIN_H)
-        add_compile_definitions(-msse2)
+        add_compile_options(-msse2)
     elseif(HAVE_XMMINTRIN_H)
-        add_compile_definitions(-msse)
+        add_compile_options(-msse)
     endif()
 endif()
 

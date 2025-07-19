@@ -87,7 +87,6 @@ RUN mkdir build-arm64 && cd build-arm64 && \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
         -DENABLE_NEON=ON \
         -DENABLE_TESTS=OFF \
         -DENABLE_STATIC=ON \
@@ -107,7 +106,6 @@ RUN mkdir build-riscv64 && cd build-riscv64 && \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=riscv64 \
         -DCMAKE_C_COMPILER=riscv64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=riscv64-linux-gnu-g++ \
         -DDISABLE_DYNAMIC_CODE=ON \
         -DENABLE_TESTS=OFF \
         -DENABLE_STATIC=ON \
@@ -160,7 +158,6 @@ RUN ./build.py --preset release build && \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
         -DENABLE_NEON=ON \
         -DENABLE_TESTS=OFF \
         -DENABLE_STATIC=ON \
@@ -172,7 +169,6 @@ RUN ./build.py --preset release build && \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=riscv64 \
         -DCMAKE_C_COMPILER=riscv64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=riscv64-linux-gnu-g++ \
         -DDISABLE_DYNAMIC_CODE=ON \
         -DENABLE_TESTS=OFF \
         -DENABLE_STATIC=ON \

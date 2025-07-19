@@ -294,7 +294,7 @@ class BuildSystem:
             return False
         
         try:
-            result = subprocess.run(["cmake", "--build", str(self.build_dir), "--target", "test"], 
+            result = subprocess.run(["ctest", "--test-dir", str(self.build_dir)], 
                                   check=True, capture_output=True, text=True)
             print(f"{Colors.OKGREEN}✓ Tests passed{Colors.ENDC}")
             return True

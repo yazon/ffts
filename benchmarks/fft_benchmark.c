@@ -25,10 +25,15 @@ void benchmark_fft(size_t N, int iterations) {
 
     // Allocate aligned memory
     input = (float*)ffts_malloc(2 * N * sizeof(float));
-    output = (float*)ffts_malloc(2 * N * sizeof(float));
+    if (!input) {
+        fprintf(stderr, "Error: Failed to allocate input memory for size %zu\n", N);
+        return;
+    }
     
-    if (!input || !output) {
-        fprintf(stderr, "Error: Failed to allocate memory for size %zu\n", N);
+    output = (float*)ffts_malloc(2 * N * sizeof(float));
+    if (!output) {
+        fprintf(stderr, "Error: Failed to allocate output memory for size %zu\n", N);
+        ffts_free(input);
         return;
     }
 

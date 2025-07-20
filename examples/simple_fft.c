@@ -19,10 +19,15 @@ int main() {
 
     // Allocate aligned memory for input and output
     input = (float*)ffts_malloc(2 * N * sizeof(float));
-    output = (float*)ffts_malloc(2 * N * sizeof(float));
+    if (!input) {
+        fprintf(stderr, "Error: Failed to allocate input memory\n");
+        return 1;
+    }
     
-    if (!input || !output) {
-        fprintf(stderr, "Error: Failed to allocate memory\n");
+    output = (float*)ffts_malloc(2 * N * sizeof(float));
+    if (!output) {
+        fprintf(stderr, "Error: Failed to allocate output memory\n");
+        ffts_free(input);
         return 1;
     }
 

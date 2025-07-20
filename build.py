@@ -182,7 +182,25 @@ class BuildSystem:
                                   capture_output=True, text=True, check=True)
             version_line = result.stdout.split('\n')[0]
             version_str = version_line.split()[2]
-            major, minor = map(int, version_str.split('.')[:2])
+            
+            # Parse version more robustly
+            version_parts = version_str.split('.')
+            major = 0
+            minor = 0
+            
+            # Extract major version
+            if len(version_parts) > 0:
+                # Remove any non-numeric suffix (e.g., "3-beta" -> "3")
+                major_str = ''.join(c for c in version_parts[0] if c.isdigit())
+                if major_str:
+                    major = int(major_str)
+            
+            # Extract minor version
+            if len(version_parts) > 1:
+                # Remove any non-numeric suffix (e.g., "25-beta" -> "25")
+                minor_str = ''.join(c for c in version_parts[1] if c.isdigit())
+                if minor_str:
+                    minor = int(minor_str)
             
             if major < 3 or (major == 3 and minor < 25):
                 print(f"{Colors.FAIL}Error: CMake version {version_str} is too old. "

@@ -316,6 +316,34 @@ if(GENERATE_POSITION_INDEPENDENT_CODE)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
+# Configure sanitizers
+if(ENABLE_SANITIZERS)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        # Enable AddressSanitizer and UndefinedBehaviorSanitizer
+        set(SANITIZER_FLAGS "-fsanitize=address,undefined -fno-omit-frame-pointer -g")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZER_FLAGS}")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SANITIZER_FLAGS}")
+        message(STATUS "Sanitizers enabled: AddressSanitizer, UndefinedBehaviorSanitizer")
+    else()
+        message(WARNING "Sanitizers requested but not supported with ${CMAKE_C_COMPILER_ID}")
+    endif()
+endif()
+
+# Configure code coverage
+if(ENABLE_COVERAGE)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        # Enable code coverage
+        set(COVERAGE_FLAGS "--coverage -g -O0")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COVERAGE_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
+        message(STATUS "Code coverage enabled")
+    else()
+        message(WARNING "Code coverage requested but not supported with ${CMAKE_C_COMPILER_ID}")
+    endif()
+endif()
+
 # Create FFTS library target
 set(FFTS_HEADERS
     include/ffts.h
@@ -478,6 +506,46 @@ if(ENABLE_TESTS AND (ENABLE_STATIC OR ENABLE_SHARED))
     add_test(NAME ffts_test COMMAND ffts_test)
 endif()
 
+# Build examples
+if(ENABLE_EXAMPLES AND (ENABLE_STATIC OR ENABLE_SHARED))
+    file(GLOB EXAMPLE_SOURCES examples/*.c)
+    
+    foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
+        get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
+        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE})
+        target_link_libraries(${EXAMPLE_NAME} ffts)
+        
+        if(FFTS_EXTRA_LIBRARIES)
+            target_link_libraries(${EXAMPLE_NAME} ${FFTS_EXTRA_LIBRARIES})
+        endif()
+        
+        # Set folder for IDE organization
+        set_target_properties(${EXAMPLE_NAME} PROPERTIES FOLDER "Examples")
+    endforeach()
+    
+    message(STATUS "Examples will be built")
+endif()
+
+# Build benchmarks
+if(ENABLE_BENCHMARKS AND (ENABLE_STATIC OR ENABLE_SHARED))
+    file(GLOB BENCHMARK_SOURCES benchmarks/*.c)
+    
+    foreach(BENCHMARK_SOURCE ${BENCHMARK_SOURCES})
+        get_filename_component(BENCHMARK_NAME ${BENCHMARK_SOURCE} NAME_WE)
+        add_executable(${BENCHMARK_NAME} ${BENCHMARK_SOURCE})
+        target_link_libraries(${BENCHMARK_NAME} ffts)
+        
+        if(FFTS_EXTRA_LIBRARIES)
+            target_link_libraries(${BENCHMARK_NAME} ${FFTS_EXTRA_LIBRARIES})
+        endif()
+        
+        # Set folder for IDE organization
+        set_target_properties(${BENCHMARK_NAME} PROPERTIES FOLDER "Benchmarks")
+    endforeach()
+    
+    message(STATUS "Benchmarks will be built")
+endif()
+
 # Install headers
 install(FILES ${FFTS_HEADERS}
     DESTINATION ${INCLUDE_INSTALL_DIR}
@@ -567,6 +635,10 @@ message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Shared library: ${ENABLE_SHARED}")
 message(STATUS "  Static library: ${ENABLE_STATIC}")
 message(STATUS "  Tests: ${ENABLE_TESTS}")
+message(STATUS "  Examples: ${ENABLE_EXAMPLES}")
+message(STATUS "  Benchmarks: ${ENABLE_BENCHMARKS}")
+message(STATUS "  Code coverage: ${ENABLE_COVERAGE}")
+message(STATUS "  Sanitizers: ${ENABLE_SANITIZERS}")
 message(STATUS "  NEON support: ${ENABLE_NEON}")
 message(STATUS "  VFP support: ${ENABLE_VFP}")
 message(STATUS "  SSE support: ${HAVE_XMMINTRIN_H}")

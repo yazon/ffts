@@ -514,6 +514,21 @@ typedef struct {
 
 arm64_imm_classes_t arm64_classify_immediate(uint64_t imm, int width);
 
+/* Register shifted add/subtract (ADD/SUB Xd, Xn, Xm, shift #imm) */
+static inline void arm64_emit_add_shifted_reg(arm64instr_t **p, ARM64Reg rd, ARM64Reg rn, ARM64Reg rm, ARM64ShiftType shift, unsigned imm6)
+{
+    /* Encoding (ADD, 64-bit): sf=1 op=0 S=0 0b01011 shift(2) imm6(6) Rm(5) 0 0 0 0 0 Rn(5) Rd(5)
+       Bits: 31   30   29  28..24   23..22     21..16     15..10     9..5    4..0 */
+    /* Base opcode for ADD (shifted register): 0x8B000000 */
+    uint32_t instr = 0x8B000000u
+                   | ((rm & 0x1f) << 16)
+                   | ((shift & 0x3) << 22)
+                   | ((imm6 & 0x3f) << 10)
+                   | ((rn & 0x1f) << 5)
+                   | (rd & 0x1f);
+    arm64_emit_instruction(p, instr);
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -146,22 +146,21 @@ generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
     ARM64_LDRI_X(p, ARM64_X20, ARM64_X19, (uint32_t)off_N);
     /* x3 = x0 */
     ARM64_MOV_X(p, ARM64_X3, ARM64_X0);
-    /* Helper lambda-like: emit ADD Xd, Xn, Xm LSL #imm (shifted register) */
-    /* Encoding: 0x8B000000 | (Xm<<16) | (shift<<22) | (imm6<<10) | (Xn<<5) | Xd */
+    /* Compute stream pointers using ADD (shifted register): Xd = Xn + Xm LSL #imm */
     /* x7  = x0 + x20 LSL #3  (1*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((3u & 0x3fu) << 10) | ((ARM64_X0 & 0x1f) << 5) | (ARM64_X7 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X7,  ARM64_X0,  ARM64_X20, ARM64_SHIFT_LSL, 3);
     /* x5  = x0 + x20 LSL #4  (2*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X0 & 0x1f) << 5) | (ARM64_X5 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X5,  ARM64_X0,  ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x10 = x7 + x20 LSL #4  (x7 + 2*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X7 & 0x1f) << 5) | (ARM64_X10 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X10, ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x4  = x5 + x20 LSL #4  (x5 + 2*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X5 & 0x1f) << 5) | (ARM64_X4 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X4,  ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x8  = x10 + x20 LSL #4 (x10 + 2*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X10 & 0x1f) << 5) | (ARM64_X8 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X8,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x6  = x4 + x20 LSL #4  (x4 + 2*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X4 & 0x1f) << 5) | (ARM64_X6 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X6,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x9  = x8 + x20 LSL #4  (x8 + 2*stride) */
-    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X8 & 0x1f) << 5) | (ARM64_X9 & 0x1f));
+    arm64_emit_add_shifted_reg(p, ARM64_X9,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 4);
 
     return start;
 }

@@ -160,6 +160,13 @@ typedef enum {
 #define ARM64_MOV_REG_ENCODE(sf, rd, rm) \
     ((sf) << 31 | 0x2a000000 | ((rm) & 0x1f) << 16 | 0x1f << 5 | ((rd) & 0x1f))
 
+/* Move immediate instructions */
+#define ARM64_MOVZ_ENCODE(sf, rd, imm16, shift) \
+    ((sf) << 31 | 0x52800000 | ((shift) & 3) << 21 | ((imm16) & 0xffff) << 5 | ((rd) & 0x1f))
+
+#define ARM64_MOVK_ENCODE(sf, rd, imm16, shift) \
+    ((sf) << 31 | 0x72800000 | ((shift) & 3) << 21 | ((imm16) & 0xffff) << 5 | ((rd) & 0x1f))
+
 /* Load/Store instructions */
 #define ARM64_LDR_IMM_ENCODE(size, rt, rn, imm12) \
     ((size) << 30 | 0x39000000 | ((imm12) & 0xfff) << 10 | ((rn) & 0x1f) << 5 | ((rt) & 0x1f))
@@ -272,6 +279,74 @@ arm64_emit_mov_reg(arm64instr_t **p, int sf, ARM64Reg rd, ARM64Reg rm)
     arm64_emit_instruction(p, ARM64_MOV_REG_ENCODE(sf, rd, rm));
 }
 
+/* ARM64 convenience immediate helper - equivalent to ARM32 MOVI */
+static inline void
+arm64_mov_imm64(arm64instr_t **p, ARM64Reg rd, uint64_t imm)
+{
+    int shift = 0;
+    int first_instruction = 1;
+    
+    /* Handle each 16-bit chunk */
+    for (shift = 0; shift < 4; shift++) {
+        uint16_t chunk = (imm >> (shift * 16)) & 0xffff;
+        
+        if (chunk != 0) {
+            if (first_instruction) {
+                /* Use MOVZ for first non-zero chunk */
+                arm64_emit_instruction(p, ARM64_MOVZ_ENCODE(1, rd, chunk, shift));
+                first_instruction = 0;
+            } else {
+                /* Use MOVK for subsequent non-zero chunks */
+                arm64_emit_instruction(p, ARM64_MOVK_ENCODE(1, rd, chunk, shift));
+            }
+        }
+    }
+    
+    /* Handle special case where immediate is 0 */
+    if (first_instruction) {
+        arm64_emit_instruction(p, ARM64_MOVZ_ENCODE(1, rd, 0, 0));
+    }
+}
+
+/* ARM64 load with immediate offset helper - equivalent to ARM32 LDRI */
+static inline void
+arm64_ldri(arm64instr_t **p, ARM64Reg dst, ARM64Reg base, uint32_t offset, int size)
+{
+    /* ARM64 LDR immediate has different size encodings:
+     * size = 0: 32-bit load (W register)
+     * size = 1: 64-bit load (X register)
+     * Offset is scaled by access size and must fit in 12 bits after scaling
+     */
+    
+    if (size == 1) {
+        /* 64-bit load: offset must be 8-byte aligned, divided by 8 */
+        if ((offset & 7) == 0 && (offset >> 3) <= 0xfff) {
+            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(3, dst, base, offset >> 3));
+        } else {
+            /* For unaligned or large offsets, add offset to base first */
+            /* This is a simplification - production code might handle this better */
+            arm64_emit_add_imm(p, 1, dst, base, offset & 0xfff);
+            if (offset > 0xfff) {
+                /* Handle large offsets with multiple adds */
+                arm64_emit_add_imm(p, 1, dst, dst, (offset >> 12) << 12);
+            }
+            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(3, dst, dst, 0));
+        }
+    } else {
+        /* 32-bit load: offset must be 4-byte aligned, divided by 4 */
+        if ((offset & 3) == 0 && (offset >> 2) <= 0xfff) {
+            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(2, dst, base, offset >> 2));
+        } else {
+            /* For unaligned or large offsets, add offset to base first */
+            arm64_emit_add_imm(p, 0, dst, base, offset & 0xfff);
+            if (offset > 0xfff) {
+                arm64_emit_add_imm(p, 0, dst, dst, (offset >> 12) << 12);
+            }
+            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(2, dst, dst, 0));
+        }
+    }
+}
+
 /* SIMD Load/Store pair instructions */
 static inline void
 arm64_emit_ldp_simd(arm64instr_t **p, int opc, ARM64VReg rt, ARM64VReg rt2, ARM64Reg rn, int32_t imm7)
@@ -377,6 +452,13 @@ arm64_emit_rev64(arm64instr_t **p, int q, int size, ARM64VReg rn, ARM64VReg rd)
 #define ARM64_SUB_X(p, rd, rn, imm) arm64_emit_sub_imm(p, 1, rd, rn, imm)
 #define ARM64_MOV_X(p, rd, rm) arm64_emit_mov_reg(p, 1, rd, rm)
 
+/* 64-bit immediate move - ARM32 MOVI equivalent */
+#define ARM64_MOV_IMM64(p, rd, imm) arm64_mov_imm64(p, rd, imm)
+
+/* Load with immediate offset - ARM32 LDRI equivalent */
+#define ARM64_LDRI_W(p, dst, base, offset) arm64_ldri(p, dst, base, offset, 0)  /* 32-bit load */
+#define ARM64_LDRI_X(p, dst, base, offset) arm64_ldri(p, dst, base, offset, 1)  /* 64-bit load */
+
 /* Function prototypes for FFT-specific operations */
 void arm64_generate_butterfly_4s(arm64instr_t **p, ARM64VReg a, ARM64VReg b, ARM64VReg twr, ARM64VReg twi);
 void arm64_generate_complex_mul(arm64instr_t **p, ARM64VReg dst, ARM64VReg src1, ARM64VReg src2r, ARM64VReg src2i);
@@ -409,6 +491,28 @@ void arm64_generate_unrolled_fft_kernel(arm64instr_t **p, size_t N, int sign);
 /* ARM64 utility functions */
 void arm64_emit_bit_reverse_address(arm64instr_t **p, ARM64Reg dst, ARM64Reg src, int log_n);
 void arm64_emit_prefetch_fft_data(arm64instr_t **p, ARM64Reg base, size_t stride, int levels);
+
+/* Prologue/Epilogue parity helpers (ARM32→ARM64) */
+void arm64_emit_std_prologue(arm64instr_t **p, unsigned int local_size);
+void arm64_emit_std_epilogue(arm64instr_t **p, unsigned int local_size);
+void arm64_emit_lean_prologue(arm64instr_t **p, unsigned int local_size, uint32_t push_mask);
+
+/* Bit operations and constants (ARM64) */
+int arm64_bsf_u64(uint64_t val);
+int arm64_is_power_of_2_u64(uint64_t val);
+int arm64_const_movk_steps(uint64_t imm);
+
+/* Convenience wrapper mirroring ARM32 MOVI naming */
+static inline void arm64_mov_reg_imm64(arm64instr_t **p, ARM64Reg rd, uint64_t imm)
+{ arm64_mov_imm64(p, rd, imm); }
+
+/* Replace misleading immediate validator with clearer API */
+typedef struct {
+    int is_addsub_imm;   /* fits ADD/SUB (12-bit) with optional 12-bit left shift */
+    int is_logical_imm;  /* fits logical-immediate (bitmask immediate) */
+} arm64_imm_classes_t;
+
+arm64_imm_classes_t arm64_classify_immediate(uint64_t imm, int width);
 
 #ifdef __cplusplus
 }

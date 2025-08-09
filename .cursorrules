@@ -1,0 +1,166 @@
+# CORE PRINCIPLES
+
+## Planning and Development Approach
+- ALWAYS create a detailed plan before implementation
+- Use a three-phase approach: Analysis → Planning → Implementation
+- Break down complex features into smaller, manageable tasks
+- Document all decisions and reasoning for future reference
+
+## Task Management System
+- Create and maintain task lists in dedicated Markdown files
+- Use incremental task completion with clear status tracking
+- Update task lists after each significant change
+- Include implementation details and file references
+
+## Project Context Management
+- Maintain comprehensive project documentation
+- Export and save important conversations
+- Create structured documentation for all major features
+- Keep context files synchronized with project state
+
+# PROJECT STRUCTURE REQUIREMENTS
+
+## Required Documentation Files
+Create and maintain these files in your project root:
+
+1. **TASKS.md** - Current task tracking with completion status
+2. **CHANGELOG.md** - Record of all significant changes
+3. **PROJECT_SCOPE.md** - Current project status and objectives
+4. **PROMPT.md** - Template for starting new chat sessions
+5. **instructions.md** - Detailed project setup and conventions
+
+## Task Management File Structure
+When creating task files, use this format:
+### [Feature Name] Implementation
+
+Brief description of the feature and its purpose.
+
+### Completed Tasks
+- Task 1 that has been completed
+- Task 2 that has been completed
+
+### In Progress Tasks
+- Task 3 currently being worked on
+- Task 4 to be completed soon
+
+### Future Tasks
+- Task 5 planned for future implementation
+- Task 6 planned for future implementation
+
+### Implementation Plan
+Detailed description of how the feature will be implemented.
+
+### Relevant Files
+- `path/to/file1.ts` - Description of purpose
+- `path/to/file2.ts` - Description of purpose
+
+### Architecture Decisions
+- List key architectural decisions made
+- Document reasoning behind major choices
+- Note any trade-offs or limitations
+
+# WORKFLOW INSTRUCTIONS
+
+## Phase 1: Analysis and Planning
+1. **Initial Analysis**
+   - Ask questions to clarify requirements
+   - Analyze existing codebase structure
+   - Identify potential challenges and dependencies
+   - Search for similar implementations in the project
+
+2. **Create Implementation Plan**
+   - Break down the feature into specific, actionable tasks
+   - Identify all files that need to be created or modified
+   - Define data structures and interfaces needed
+   - Plan testing strategy
+
+3. **Document the Plan**
+   - Create a detailed task list in TASKS.md
+   - Update PROJECT_SCOPE.md with new objectives
+   - Add entry to CHANGELOG.md for tracking
+
+## Phase 2: Implementation
+1. **Incremental Development**
+   - Implement one task at a time
+   - Test each component before moving to next
+   - Update task list after each completion
+   - Keep file sizes manageable (under 1500 lines when possible)
+
+2. **Context Management**
+   - Reference relevant files using @ symbols
+   - Keep only necessary files open
+   - Update documentation as you progress
+   - Maintain clear commit messages
+
+3. **Error Handling**
+   - Test implementations immediately
+   - Fix errors before proceeding to next task
+   - Document any issues encountered
+   - Update task list with lessons learned
+
+## Phase 3: Review and Documentation
+1. **Implementation Review**
+   - Verify all tasks are completed
+   - Test the complete feature
+   - Review code quality and consistency
+   - Check for potential improvements
+
+2. **Documentation Update**
+   - Update CHANGELOG.md with completed feature
+   - Mark all tasks as complete in task list
+   - Document any architectural decisions made
+   - Export conversation for future reference
+
+# CONVERSATION MANAGEMENT
+
+## Session Documentation
+- Export important conversations as markdown files
+- Name exported files with feature name and date
+- Include conversation exports in project documentation
+- Reference exported conversations in task lists
+
+### Context Preservation
+- Always reference the current task list at session start
+- Include relevant documentation files in context
+- Reference previous conversations when continuing work
+- Maintain consistent naming conventions
+
+# AGENT INTERACTION GUIDELINES
+
+## Communication Style
+- Be explicit about what files need to be modified
+- Ask for confirmation before making large changes
+- Provide clear acceptance criteria for each task
+- Request status updates on task completion
+
+## File Management
+- Always update task lists after completing work
+- Mark completed tasks with [x] notation
+- Add new tasks discovered during implementation
+- Keep file references current and accurate
+
+## Error Recovery
+- If implementation goes off track, reference the original plan
+- Ask agent to review task list and current progress
+- Restart from last checkpoint if necessary
+- Document any course corrections made
+
+# QUALITY ASSURANCE
+
+## Code Standards
+- Follow existing project conventions
+- Ensure type safety where applicable
+- Add appropriate error handling
+- Include necessary comments and documentation
+
+## Testing Requirements
+- Test each component as it's implemented
+- Verify integration with existing code
+- Run automated tests if available
+- Manual testing for user-facing features
+
+## Documentation Standards
+- Update documentation alongside code changes
+- Include examples where helpful
+- Document any breaking changes
+- Keep README files current

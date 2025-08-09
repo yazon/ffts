@@ -102,6 +102,9 @@ static float impulse_error(int N, int sign, float *data)
 
 void print_ffts_plan_offsets(void)
 {
+    printf("Offset of offsets: %zu\n", offsetof(struct _ffts_plan_t, offsets));
+    printf("Offset of oe_ws: %zu\n", offsetof(struct _ffts_plan_t, oe_ws));
+    printf("Offset of eo_ws: %zu\n", offsetof(struct _ffts_plan_t, eo_ws));
     printf("Offset of ee_ws: %zu\n", offsetof(struct _ffts_plan_t, ee_ws));
     printf("Offset of is: %zu\n", offsetof(struct _ffts_plan_t, is));
     printf("Offset of ws_is: %zu\n", offsetof(struct _ffts_plan_t, ws_is));
@@ -137,8 +140,17 @@ int test_transform(int n, int sign)
     float FFTS_ALIGN(32) *input = _mm_malloc(2 * n * sizeof(float), 32);
     float FFTS_ALIGN(32) *output = _mm_malloc(2 * n * sizeof(float), 32);
 #else
-    float FFTS_ALIGN(32) *input = valloc(2 * n * sizeof(float));
-    float FFTS_ALIGN(32) *output = valloc(2 * n * sizeof(float));
+    float FFTS_ALIGN(32) *input;
+    float FFTS_ALIGN(32) *output;
+    if (posix_memalign((void **)&input , 16 , 2*n*sizeof(float)) != 0) {
+        fprintf(stderr, "posix_memalign failed for input\n");
+        return 0;
+    }
+    if (posix_memalign((void **)&output, 16 , 2*n*sizeof(float)) != 0) {
+        fprintf(stderr, "posix_memalign failed for output\n");
+        free(input);
+        return 0;
+    }
 #endif
     int i;
 
@@ -177,8 +189,17 @@ int main(int argc, char *argv[])
         float FFTS_ALIGN(32) *input = _mm_malloc(2 * n * sizeof(float), 32);
         float FFTS_ALIGN(32) *output = _mm_malloc(2 * n * sizeof(float), 32);
 #else
-        float FFTS_ALIGN(32) *input = valloc(2 * n * sizeof(float));
-        float FFTS_ALIGN(32) *output = valloc(2 * n * sizeof(float));
+        float FFTS_ALIGN(32) *input;
+        float FFTS_ALIGN(32) *output;
+        if (posix_memalign((void **)&input , 16 , 2*n*sizeof(float)) != 0) {
+            fprintf(stderr, "posix_memalign failed for input\n");
+            return 0;
+        }
+        if (posix_memalign((void **)&output, 16 , 2*n*sizeof(float)) != 0) {
+            fprintf(stderr, "posix_memalign failed for output\n");
+            free(input);
+            return 0;
+        }
 #endif
 
         for (i = 0; i < n; i++) {

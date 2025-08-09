@@ -92,18 +92,28 @@ typedef float32x4x2_t V4SF2;      /* A pair of V4SF, used for LD2/ST2 results */
  * Create a vector from four literal float values.
  * Uses a compound literal, which is safe and portable.
  */
-#define V4SF_LIT4(f0, f1, f2, f3) ((float32x4_t){f0, f1, f2, f3})
+static FFTS_ALWAYS_INLINE V4SF
+V4SF_LIT4(float f3, float f2, float f1, float f0)
+{
+    float FFTS_ALIGN(16) d[4] = {f0, f1, f2, f3};
+    return V4SF_LD(d);
+}
 
 /*
  * Re-implementation of legacy macros required by macros.h.
  * These map the old concepts to their efficient AArch64 equivalents.
  */
 
-/* V4SF_UNPACK_LO is equivalent to ZIP1 on AArch64 */
-#define V4SF_UNPACK_LO(a, b) (vzip1q_f32((a), (b)))
+/*
+ * Match ARM32 semantics:
+ *   V4SF_UNPACK_LO({a0,a1,a2,a3}, {b0,b1,b2,b3}) -> {a0,a1,b0,b1}
+ *   V4SF_UNPACK_HI({a0,a1,a2,a3}, {b0,b1,b2,b3}) -> {a2,a3,b2,b3}
+ * Use vget_low/high_f32 + vcombine_f32 to preserve ordering.
+ */
+#define V4SF_UNPACK_LO(a, b) (vcombine_f32(vget_low_f32((a)), vget_low_f32((b))))
 
-/* V4SF_UNPACK_HI is equivalent to ZIP2 on AArch64 */
-#define V4SF_UNPACK_HI(a, b) (vzip2q_f32((a), (b)))
+/* High unpack: combine upper 64-bit halves */
+#define V4SF_UNPACK_HI(a, b) (vcombine_f32(vget_high_f32((a)), vget_high_f32((b))))
 
 /* V4SF_BLEND combines the low half of the first vector and high half of the second */
 #define V4SF_BLEND(x, y) (vcombine_f32(vget_low_f32(x), vget_high_f32(y)))
@@ -121,13 +131,13 @@ typedef float32x4x2_t V4SF2;      /* A pair of V4SF, used for LD2/ST2 results */
 static FFTS_ALWAYS_INLINE V4SF
 V4SF_IMULI(int inv, V4SF a)
 {
-    // A single const is better than V4SF_LIT4 for this pattern.
-    const float32x4_t sign_mask = {0.0f, -0.0f, 0.0f, -0.0f};
-    V4SF swapped = V4SF_SWAP_PAIRS(a); // -> {i0,r0,i1,r1}
-    if (inv) { // inverse, multiply by +i -> {-i0, r0}
-        return V4SF_XOR(swapped, V4SF_LIT4(-0.0f, 0.0f, -0.0f, 0.0f));
-    } else { // forward, multiply by -i -> {i0, -r0}
-        return V4SF_XOR(swapped, sign_mask);
+    // Match ARM32 macros-neon.h exactly: XOR first, then swap pairs
+    if (inv) {
+        // +i: {-i0, r0, -i1, r1}
+        return V4SF_SWAP_PAIRS(V4SF_XOR(a, V4SF_LIT4(0.0f, -0.0f, 0.0f, -0.0f)));
+    } else {
+        // -i: {i0, -r0, i1, -r1}
+        return V4SF_SWAP_PAIRS(V4SF_XOR(a, V4SF_LIT4(-0.0f, 0.0f, -0.0f, 0.0f)));
     }
 }
 
@@ -139,40 +149,13 @@ V4SF_IMULI(int inv, V4SF a)
 static FFTS_ALWAYS_INLINE V4SF
 V4SF_IMUL(V4SF a, V4SF b)
 {
-    V4SF b_re = V4SF_DUPLICATE_RE(b);  // -> {br0,br0,br1,br1}
-    V4SF b_im = V4SF_DUPLICATE_IM(b);  // -> {bi0,bi0,bi1,bi1}
-    V4SF a_swp = V4SF_SWAP_PAIRS(a);   // -> {ai0,ar0,ai1,ar1}
-
-#ifdef __ARM_FEATURE_FMA
-    // (ar*br - ai*bi) + i*(ar*bi + ai*br)
-    // Fused version: c + a*b
-    // temp = ar*br
-    // res  = ai*br
-    // temp = temp - ai*bi  (vfmsq)
-    // res  = res + ar*bi   (vfmaq)
-    V4SF temp = vmulq_f32(b_re, a);
-    V4SF res  = vmulq_f32(b_re, a_swp);
-    temp = vfmsq_f32(temp, b_im, a_swp);
-    res  = vfmaq_f32(res, b_im, a);
-    return vzip1q_f32(temp, res); // Interleaves {re,re} and {im,im} to {re,im,re,im}
-#else
-    // Non-fused version
-    V4SF term1 = V4SF_MUL(a, b_re);      // {ar*br, ai*br}
-    V4SF term2 = V4SF_MUL(a_swp, b_im);  // {ai*bi, ar*bi}
-    V4SF real_part = V4SF_SUB(term1, term2); // {ar*br-ai*bi, ai*br-ar*bi} -> second element is wrong
-    V4SF imag_part = V4SF_ADD(term1, term2); // {ar*br+ai*bi, ai*br+ar*bi} -> first element is wrong
-    
-    // Correct way for non-fused:
-    float32x4_t real_res = vmulq_f32(a, b_re);          // {ar*br, ai*br}
-    real_res = vmlsq_f32(real_res, a_swp, b_im);    // {ar*br - ai*bi, ai*br - ar*bi} -> still wrong
-    // A more direct, clearer implementation is better.
-    V4SF re = vmulq_f32(V4SF_DUPLICATE_RE(a), b_re);
-    re = vmlsq_f32(re, V4SF_DUPLICATE_IM(a), b_im); // re = ar*br - ai*bi
-    V4SF im = vmulq_f32(V4SF_DUPLICATE_RE(a), b_im);
-    im = vmlaq_f32(im, V4SF_DUPLICATE_IM(a), b_re); // im = ar*bi + ai*br
-    // Now we have {re0,re0,re1,re1} and {im0,im0,im1,im1}. Interleave them.
-    return vzip1q_f32(re, im);
-#endif
+    // Match ARM32 3-arg helper:
+    // re = V4SF_MUL(re, a); im = V4SF_MUL(im, V4SF_SWAP_PAIRS(a)); return re - im;
+    V4SF b_re = V4SF_DUPLICATE_RE(b);  // {br0,br0,br1,br1}
+    V4SF b_im = V4SF_DUPLICATE_IM(b);  // {bi0,bi0,bi1,bi1}
+    V4SF re = V4SF_MUL(b_re, a);
+    V4SF im = V4SF_MUL(b_im, V4SF_SWAP_PAIRS(a));
+    return V4SF_SUB(re, im);
 }
 
 /*
@@ -183,10 +166,12 @@ V4SF_IMUL(V4SF a, V4SF b)
 static FFTS_ALWAYS_INLINE V4SF
 V4SF_IMULJ(V4SF a, V4SF b)
 {
-    const float32x4_t sign_mask = {-0.0f, 0.0f, -0.0f, 0.0f};
-    // Negate imaginary part of b to get conj(b)
-    V4SF b_conj = V4SF_XOR(b, sign_mask);
-    return V4SF_IMUL(a, b_conj);
+    // Match ARM32 3-arg helper: return re + im
+    V4SF b_re = V4SF_DUPLICATE_RE(b);  // {br0,br0,br1,br1}
+    V4SF b_im = V4SF_DUPLICATE_IM(b);  // {bi0,bi0,bi1,bi1}
+    V4SF re = V4SF_MUL(b_re, a);
+    V4SF im = V4SF_MUL(b_im, V4SF_SWAP_PAIRS(a));
+    return V4SF_ADD(re, im);
 }
 
 

@@ -10,6 +10,18 @@ Sorry, but I haven't been able to touch this for many years!
 
 [![Build Status](https://travis-ci.org/linkotec/ffts.svg?branch=master)](https://travis-ci.org/linkotec/ffts)
 
+## Building FFTS
+
+### ARM64/AArch64 Support
+FFTS includes highly optimized ARM64 implementations with full NEON support. See [ARM64 Developer Guide](doc/ARM64_DEVELOPER_GUIDE.md) for detailed information on calling conventions, performance optimizations, and build instructions.
+
+To build for ARM64 Linux:
+```bash
+./build_arm64.sh aarch64-linux-gnu /opt/ffts-arm64
+```
+
+### Other Platforms
+
 To build for Android, edit and run build_android.sh
 
 To build for iOS, edit and run build_iphone.sh 

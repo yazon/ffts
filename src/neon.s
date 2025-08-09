@@ -41,14 +41,14 @@ _neon_x4:
   .globl    neon_x4
 neon_x4:
 #endif
-  vld1.32  {q8,  q9},  [r0, :128]
+  vld1.32  {q8,  q9},  [r0, :64]
   add      r4, r0, r1, lsl #1
-  vld1.32  {q10, q11}, [r4, :128]
+  vld1.32  {q10, q11}, [r4, :64]
   add      r5, r0, r1, lsl #2
-  vld1.32  {q12, q13}, [r5, :128]
+  vld1.32  {q12, q13}, [r5, :64]
   add      r6, r4, r1, lsl #2
-  vld1.32  {q14, q15}, [r6, :128]
-  vld1.32  {q2,  q3},  [r2, :128]
+  vld1.32  {q14, q15}, [r6, :64]
+  vld1.32  {q2,  q3},  [r2, :64]
 
   vmul.f32 q0,  q13, q3
   vmul.f32 q5,  q12, q2
@@ -71,13 +71,13 @@ neon_x4:
   vsub.f32 q2,  q10, q13
   vsub.f32 q4,  q8,  q15
   vadd.f32 q3,  q11, q12
-  vst1.32  {q0, q1}, [r0, :128]
+  vst1.32  {q0, q1}, [r0, :64]
   vsub.f32 q5,  q9,  q14
   vadd.f32 q6,  q10, q13
   vsub.f32 q7,  q11, q12
-  vst1.32  {q2, q3}, [r4, :128]
-  vst1.32  {q4, q5}, [r5, :128]
-  vst1.32  {q6, q7}, [r6, :128]
+  vst1.32  {q2, q3}, [r4, :64]
+  vst1.32  {q4, q5}, [r5, :64]
+  vst1.32  {q6, q7}, [r6, :64]
   bx       lr
 
   .align 4
@@ -101,9 +101,9 @@ neon_x8:
 
   sub      r11, r11, r1, lsr #5
 1: 
-  vld1.32  {q2,  q3},  [r12, :128]!
-  vld1.32  {q14, q15}, [r6, :128]
-  vld1.32  {q10, q11}, [r5, :128]
+  vld1.32  {q2,  q3},  [r12, :64]!
+  vld1.32  {q14, q15}, [r6, :64]
+  vld1.32  {q10, q11}, [r5, :64]
   adds     r11, r11, #1
   vmul.f32 q12, q15, q2
   vmul.f32 q8,  q14, q3
@@ -113,11 +113,11 @@ neon_x8:
   vmul.f32 q0,  q11, q2
   vmul.f32 q14, q11, q3
   vmul.f32 q15, q15, q3
-  vld1.32  {q2,  q3},  [r12, :128]!
+  vld1.32  {q2,  q3},  [r12, :64]!
   vsub.f32 q10, q12, q8
   vadd.f32 q11, q0,  q9
   vadd.f32 q8,  q15, q13
-  vld1.32  {q12, q13}, [r4, :128]
+  vld1.32  {q12, q13}, [r4, :64]
   vsub.f32 q9,  q1,  q14
   vsub.f32 q15, q11, q10
   vsub.f32 q14, q9,  q8
@@ -125,15 +125,15 @@ neon_x8:
   vadd.f32 q6,  q12, q15
   vadd.f32 q5,  q13, q14
   vsub.f32 q7,  q13, q14
-  vld1.32  {q14, q15}, [r9, :128]
-  vld1.32  {q12, q13}, [r7, :128]
+  vld1.32  {q14, q15}, [r9, :64]
+  vld1.32  {q12, q13}, [r7, :64]
   vmul.f32 q1,  q14, q2
   vmul.f32 q0,  q14, q3
-  vst1.32  {q4,  q5},  [r4, :128]
+  vst1.32  {q4,  q5},  [r4, :64]
   vmul.f32 q14, q15, q3
   vmul.f32 q4,  q15, q2
   vadd.f32 q15, q9,  q8
-  vst1.32  {q6,  q7},  [r6, :128]
+  vst1.32  {q6,  q7},  [r6, :64]
   vmul.f32 q8,  q12, q3
   vmul.f32 q5,  q13, q3
   vmul.f32 q12, q12, q2
@@ -141,7 +141,7 @@ neon_x8:
   vadd.f32 q14, q14, q1
   vsub.f32 q13, q4,  q0
   vadd.f32 q0,  q9,  q8
-  vld1.32  {q8,  q9},  [r3, :128]
+  vld1.32  {q8,  q9},  [r3, :64]
   vadd.f32 q1,  q11, q10
   vsub.f32 q12, q12, q5
   vadd.f32 q11, q8,  q15
@@ -157,46 +157,46 @@ neon_x8:
   vsub.f32 q4,  q11, q2
   vsub.f32 q2,  q8,  q10
   vadd.f32 q3,  q9,  q12
-  vst1.32  {q0,  q1},  [r3, :128]!
+  vst1.32  {q0,  q1},  [r3, :64]!
   vsub.f32 q5,  q13, q15
-  vld1.32  {q14, q15}, [r10, :128]
+  vld1.32  {q14, q15}, [r10, :64]
   vsub.f32 q7,  q9,  q12
-  vld1.32  {q12, q13}, [r8, :128]
-  vst1.32  {q2,  q3},  [r5, :128]!
-  vld1.32  {q2,  q3},  [r12, :128]!
+  vld1.32  {q12, q13}, [r8, :64]
+  vst1.32  {q2,  q3},  [r5, :64]!
+  vld1.32  {q2,  q3},  [r12, :64]!
   vadd.f32 q6,  q8,  q10
   vmul.f32 q8,  q14, q2
-  vst1.32  {q4,  q5},  [r7, :128]!
+  vst1.32  {q4,  q5},  [r7, :64]!
   vmul.f32 q10, q15, q3
   vmul.f32 q9,  q13, q3
   vmul.f32 q11, q12, q2
   vmul.f32 q14, q14, q3
-  vst1.32  {q6,  q7},  [r9, :128]!
+  vst1.32  {q6,  q7},  [r9, :64]!
   vmul.f32 q15, q15, q2
   vmul.f32 q12, q12, q3
   vmul.f32 q13, q13, q2
   vadd.f32 q10, q10, q8
   vsub.f32 q11, q11, q9
-  vld1.32  {q8,  q9},  [r4, :128]
+  vld1.32  {q8,  q9},  [r4, :64]
   vsub.f32 q14, q15, q14
   vadd.f32 q15, q13, q12
   vadd.f32 q13, q11, q10
   vadd.f32 q12, q15, q14
   vsub.f32 q15, q15, q14
   vsub.f32 q14, q11, q10
-  vld1.32  {q10, q11}, [r6, :128]
+  vld1.32  {q10, q11}, [r6, :64]
   vadd.f32 q0,  q8,  q13
   vadd.f32 q1,  q9,  q12
   vsub.f32 q2,  q10, q15
   vadd.f32 q3,  q11, q14
   vsub.f32 q4,  q8,  q13
-  vst1.32  {q0,  q1},  [r4, :128]!
+  vst1.32  {q0,  q1},  [r4, :64]!
   vsub.f32 q5,  q9,  q12
   vadd.f32 q6,  q10, q15
-  vst1.32  {q2,  q3},  [r6, :128]!
+  vst1.32  {q2,  q3},  [r6, :64]!
   vsub.f32 q7,  q11, q14
-  vst1.32  {q4,  q5},  [r8, :128]!
-  vst1.32  {q6,  q7},  [r10, :128]!
+  vst1.32  {q4,  q5},  [r8, :64]!
+  vst1.32  {q6,  q7},  [r10, :64]!
   bne      1b
   bx       lr
 
@@ -221,9 +221,9 @@ neon_x8_t:
 
   sub      r11, r11, r1, lsr #5
 1:
-  vld1.32  {q2,  q3},  [r12, :128]!
-  vld1.32  {q14, q15}, [r6, :128]
-  vld1.32  {q10, q11}, [r5, :128]
+  vld1.32  {q2,  q3},  [r12, :64]!
+  vld1.32  {q14, q15}, [r6, :64]
+  vld1.32  {q10, q11}, [r5, :64]
   adds     r11, r11, #1
   vmul.f32 q12, q15, q2
   vmul.f32 q8,  q14, q3
@@ -233,11 +233,11 @@ neon_x8_t:
   vmul.f32 q0,  q11, q2
   vmul.f32 q14, q11, q3
   vmul.f32 q15, q15, q3
-  vld1.32  {q2,  q3},  [r12, :128]!
+  vld1.32  {q2,  q3},  [r12, :64]!
   vsub.f32 q10, q12, q8
   vadd.f32 q11, q0,  q9
   vadd.f32 q8,  q15, q13
-  vld1.32  {q12, q13}, [r4, :128]
+  vld1.32  {q12, q13}, [r4, :64]
   vsub.f32 q9,  q1,  q14
   vsub.f32 q15, q11, q10
   vsub.f32 q14, q9,  q8
@@ -245,15 +245,15 @@ neon_x8_t:
   vadd.f32 q6,  q12, q15
   vadd.f32 q5,  q13, q14
   vsub.f32 q7,  q13, q14
-  vld1.32  {q14, q15}, [r9, :128]
-  vld1.32  {q12, q13}, [r7, :128]
+  vld1.32  {q14, q15}, [r9, :64]
+  vld1.32  {q12, q13}, [r7, :64]
   vmul.f32 q1,  q14, q2
   vmul.f32 q0,  q14, q3
-  vst1.32  {q4,  q5},  [r4, :128]
+  vst1.32  {q4,  q5},  [r4, :64]
   vmul.f32 q14, q15, q3
   vmul.f32 q4,  q15, q2
   vadd.f32 q15, q9,  q8
-  vst1.32  {q6,  q7},  [r6, :128]
+  vst1.32  {q6,  q7},  [r6, :64]
   vmul.f32 q8,  q12, q3
   vmul.f32 q5,  q13, q3
   vmul.f32 q12, q12, q2
@@ -261,7 +261,7 @@ neon_x8_t:
   vadd.f32 q14, q14, q1
   vsub.f32 q13, q4,  q0
   vadd.f32 q0,  q9,  q8
-  vld1.32  {q8,  q9},  [r3, :128]
+  vld1.32  {q8,  q9},  [r3, :64]
   vadd.f32 q1,  q11, q10
   vsub.f32 q12, q12, q5
   vadd.f32 q11, q8,  q15
@@ -277,46 +277,46 @@ neon_x8_t:
   vsub.f32 q4,  q11, q2
   vsub.f32 q2,  q8,  q10
   vadd.f32 q3,  q9,  q12
-  vst2.32  {q0,  q1},  [r3, :128]!
+  vst2.32  {q0,  q1},  [r3, :64]!
   vsub.f32 q5,  q13, q15
-  vld1.32  {q14, q15}, [r10, :128]
+  vld1.32  {q14, q15}, [r10, :64]
   vsub.f32 q7,  q9,  q12
-  vld1.32  {q12, q13}, [r8, :128]
-  vst2.32  {q2,  q3},  [r5, :128]!
-  vld1.32  {q2,  q3},  [r12, :128]!
+  vld1.32  {q12, q13}, [r8, :64]
+  vst2.32  {q2,  q3},  [r5, :64]!
+  vld1.32  {q2,  q3},  [r12, :64]!
   vadd.f32 q6,  q8,  q10
   vmul.f32 q8,  q14, q2
-  vst2.32  {q4,  q5},  [r7, :128]!
+  vst2.32  {q4,  q5},  [r7, :64]!
   vmul.f32 q10, q15, q3
   vmul.f32 q9,  q13, q3
   vmul.f32 q11, q12, q2
   vmul.f32 q14, q14, q3
-  vst2.32  {q6,  q7},  [r9, :128]!
+  vst2.32  {q6,  q7},  [r9, :64]!
   vmul.f32 q15, q15, q2
   vmul.f32 q12, q12, q3
   vmul.f32 q13, q13, q2
   vadd.f32 q10, q10, q8
   vsub.f32 q11, q11, q9
-  vld1.32  {q8,  q9},  [r4, :128]
+  vld1.32  {q8,  q9},  [r4, :64]
   vsub.f32 q14, q15, q14
   vadd.f32 q15, q13, q12
   vadd.f32 q13, q11, q10
   vadd.f32 q12, q15, q14
   vsub.f32 q15, q15, q14
   vsub.f32 q14, q11, q10
-  vld1.32  {q10, q11}, [r6, :128]
+  vld1.32  {q10, q11}, [r6, :64]
   vadd.f32 q0,  q8,  q13
   vadd.f32 q1,  q9,  q12
   vsub.f32 q2,  q10, q15
   vadd.f32 q3,  q11, q14
   vsub.f32 q4,  q8,  q13
-  vst2.32  {q0,  q1},  [r4, :128]!
+  vst2.32  {q0,  q1},  [r4, :64]!
   vsub.f32 q5,  q9,  q12
   vadd.f32 q6,  q10, q15
-  vst2.32  {q2,  q3},  [r6, :128]!
+  vst2.32  {q2,  q3},  [r6, :64]!
   vsub.f32 q7,  q11, q14
-  vst2.32  {q4,  q5},  [r8, :128]!
-  vst2.32  {q6,  q7},  [r10, :128]!
+  vst2.32  {q4,  q5},  [r8, :64]!
+  vst2.32  {q6,  q7},  [r10, :64]!
   bne      1b
 
 @ assumes r0 = out 
@@ -334,17 +334,17 @@ _neon_ee:
   .globl  neon_ee
 neon_ee:
 #endif
-  vld1.32  {d16, d17}, [r2, :128]
+  vld1.32  {d16, d17}, [r2, :64]
 1:
-  vld2.32  {q15}, [r10, :128]!
-  vld2.32  {q13}, [r8, :128]!
-  vld2.32  {q14}, [r7, :128]!
-  vld2.32  {q9},  [r4, :128]!
-  vld2.32  {q10}, [r3, :128]!
-  vld2.32  {q11}, [r6, :128]!
-  vld2.32  {q12}, [r5, :128]!
+  vld2.32  {q15}, [r10, :64]!
+  vld2.32  {q13}, [r8, :64]!
+  vld2.32  {q14}, [r7, :64]!
+  vld2.32  {q9},  [r4, :64]!
+  vld2.32  {q10}, [r3, :64]!
+  vld2.32  {q11}, [r6, :64]!
+  vld2.32  {q12}, [r5, :64]!
   vsub.f32 q1, q14, q13
-  vld2.32  {q0}, [r9, :128]!
+  vld2.32  {q0}, [r9, :64]!
   subs     r11, r11, #1
   vsub.f32 q2,  q0,  q15
   vadd.f32 q0,  q0,  q15
@@ -393,12 +393,12 @@ neon_ee:
   add      lr, r0, lr, lsl #2
   vsub.f32 q5,  q14, q5
   vadd.f32 d14, d30, d27
-  vst2.32  {q0, q1}, [r2, :128]!
-  vst2.32  {q2, q3}, [lr, :128]!
+  vst2.32  {q0, q1}, [r2, :64]!
+  vst2.32  {q2, q3}, [lr, :64]!
   vtrn.32  q4,  q6
   vtrn.32  q5,  q7
-  vst2.32  {q4, q5}, [r2, :128]!
-  vst2.32  {q6, q7}, [lr, :128]!
+  vst2.32  {q4, q5}, [r2, :64]!
+  vst2.32  {q6, q7}, [lr, :64]!
   bne      1b
 
 @ assumes r0 = out 
@@ -416,24 +416,24 @@ _neon_oo:
 neon_oo:
 #endif
 1:
-  vld2.32  {q8},  [r6, :128]!
-  vld2.32  {q9},  [r5, :128]!
-  vld2.32  {q10}, [r4, :128]!
-  vld2.32  {q13}, [r3, :128]!
+  vld2.32  {q8},  [r6, :64]!
+  vld2.32  {q9},  [r5, :64]!
+  vld2.32  {q10}, [r4, :64]!
+  vld2.32  {q13}, [r3, :64]!
   vadd.f32 q11, q9,  q8
   vsub.f32 q8,  q9,  q8
   vsub.f32 q9,  q13, q10
   vadd.f32 q12, q13, q10
   subs     r11, r11, #1
-  vld2.32  {q10}, [r7, :128]!
-  vld2.32  {q13}, [r9, :128]!
+  vld2.32  {q10}, [r7, :64]!
+  vld2.32  {q13}, [r9, :64]!
   vsub.f32 q2,  q12, q11
   vsub.f32 d7,  d19, d16
   vadd.f32 d3,  d19, d16
   vadd.f32 d6,  d18, d17
   vsub.f32 d2,  d18, d17
-  vld2.32  {q9}, [r8,  :128]!
-  vld2.32  {q8}, [r10, :128]!
+  vld2.32  {q9}, [r8,  :64]!
+  vld2.32  {q8}, [r10, :64]!
   vadd.f32 q0,  q12, q11
   vadd.f32 q11, q13, q8
   vadd.f32 q12, q10, q9
@@ -451,12 +451,12 @@ neon_oo:
   add      r2,  r0, r2, lsl #2
   vtrn.32  q1,  q3
   add      lr,  r0, lr, lsl #2
-  vst2.32  {q0, q1}, [r2, :128]!
-  vst2.32  {q2, q3}, [lr, :128]!
+  vst2.32  {q0, q1}, [r2, :64]!
+  vst2.32  {q2, q3}, [lr, :64]!
   vtrn.32  q4,  q6
   vtrn.32  q5,  q7
-  vst2.32  {q4, q5}, [r2, :128]!
-  vst2.32  {q6, q7}, [lr, :128]!
+  vst2.32  {q4, q5}, [r2, :64]!
+  vst2.32  {q6, q7}, [lr, :64]!
   bne      1b
 
 @ assumes r0 = out 
@@ -473,12 +473,12 @@ _neon_eo:
   .globl  neon_eo
 neon_eo:
 #endif
-  vld2.32  {q9},  [r5, :128]!
-  vld2.32  {q13}, [r3, :128]!
-  vld2.32  {q12}, [r4, :128]!
-  vld2.32  {q0},  [r7, :128]!
+  vld2.32  {q9},  [r5, :64]!
+  vld2.32  {q13}, [r3, :64]!
+  vld2.32  {q12}, [r4, :64]!
+  vld2.32  {q0},  [r7, :64]!
   vsub.f32 q11, q13, q12
-  vld2.32  {q8},  [r6, :128]!
+  vld2.32  {q8},  [r6, :64]!
   vadd.f32 q12, q13, q12
   vsub.f32 q10, q9,  q8
   vadd.f32 q8,  q9,  q8
@@ -489,17 +489,17 @@ neon_eo:
   vsub.f32 d8,  d22, d21
   vadd.f32 d10, d22, d21
   ldr      r2,  [r12], #4
-  vld1.32  {d20, d21}, [r11, :128]
+  vld1.32  {d20, d21}, [r11, :64]
   ldr      lr,  [r12], #4
   vtrn.32  q9,  q4
   add      r2,  r0, r2, lsl #2
   vtrn.32  q8,  q5
   add      lr,  r0, lr, lsl #2
   vswp     d9,  d10
-  vst1.32  {d8, d9, d10, d11}, [lr, :128]!
-  vld2.32  {q13}, [r10, :128]!
-  vld2.32  {q15}, [r9,  :128]!
-  vld2.32  {q11}, [r8,  :128]!
+  vst1.32  {d8, d9, d10, d11}, [lr, :64]!
+  vld2.32  {q13}, [r10, :64]!
+  vld2.32  {q15}, [r9,  :64]!
+  vld2.32  {q11}, [r8,  :64]!
   vsub.f32 q14, q15, q13
   vsub.f32 q12, q0,  q11
   vadd.f32 q11, q0,  q11
@@ -513,7 +513,7 @@ neon_eo:
   vsub.f32 q15, q13, q11
   vtrn.32  q15, q7
   vswp     d13, d14
-  vst1.32  {d12, d13, d14, d15}, [lr, :128]!
+  vst1.32  {d12, d13, d14, d15}, [lr, :64]!
   vtrn.32  q13, q14
   vtrn.32  q11, q12
   vmul.f32 d24, d26, d21
@@ -554,11 +554,11 @@ _neon_oe:
   .globl  neon_oe
 neon_oe:
 #endif
-  vld1.32  {q8},  [r5,  :128]!
-  vld1.32  {q10}, [r6,  :128]!
-  vld2.32  {q11}, [r4,  :128]!
-  vld2.32  {q13}, [r3,  :128]!
-  vld2.32  {q15}, [r10, :128]!
+  vld1.32  {q8},  [r5,  :64]!
+  vld1.32  {q10}, [r6,  :64]!
+  vld2.32  {q11}, [r4,  :64]!
+  vld2.32  {q13}, [r3,  :64]!
+  vld2.32  {q15}, [r10, :64]!
   vorr     d25, d17, d17
   vorr     d24, d20, d20
   vorr     d20, d16, d16
@@ -580,13 +580,13 @@ neon_oe:
   vadd.f32 d26, d18, d17
   vtrn.32  q0,  q12
   vtrn.32  q1,  q13
-  vld1.32  {d24, d25}, [r11, :128]
+  vld1.32  {d24, d25}, [r11, :64]
   vswp     d1, d2
-  vst1.32  {q0,  q1},  [r2, :128]!
-  vld2.32  {q0},  [r9, :128]!
+  vst1.32  {q0,  q1},  [r2, :64]!
+  vld2.32  {q0},  [r9, :64]!
   vadd.f32 q1,  q0, q15
-  vld2.32  {q13}, [r8, :128]!
-  vld2.32  {q14}, [r7, :128]!
+  vld2.32  {q13}, [r8, :64]!
+  vld2.32  {q14}, [r7, :64]!
   vsub.f32 q15, q0,  q15
   vsub.f32 q0,  q14, q13
   vadd.f32 q3,  q14, q13
@@ -599,7 +599,7 @@ neon_oe:
   vtrn.32  q2,  q14
   vtrn.32  q3,  q13
   vswp     d5, d6
-  vst1.32  {q2, q3}, [r2, :128]!
+  vst1.32  {q2, q3}, [r2, :64]!
   vtrn.32  q11, q9
   vtrn.32  q10, q8
   vmul.f32 d20, d18, d25
@@ -652,19 +652,19 @@ neon_transpose4:
   mov     r4, r2
   add     r6, r0, r2, lsl #3
 2:
-  vld1.32 {q8, q9},  [r0, :128]!
-  vld1.32 {q12,q13}, [r6, :128]!
+  vld1.32 {q8, q9},  [r0, :64]!
+  vld1.32 {q12,q13}, [r6, :64]!
   subs    r4, r4, #4
   vswp    d17, d24
   vswp    d19, d26
   vswp    d21, d28
   vswp    d23, d30
-  vst1.32 {q8},  [ip, :128]
-  vst1.32 {q12}, [lr, :128]
+  vst1.32 {q8},  [ip, :64]
+  vst1.32 {q12}, [lr, :64]
   add     ip, ip, r3, lsl #4
   add     lr, lr, r3, lsl #4
-  vst1.32 {q9},  [ip, :128]
-  vst1.32 {q13}, [lr, :128]
+  vst1.32 {q9},  [ip, :64]
+  vst1.32 {q13}, [lr, :64]
   add     ip, ip, r3, lsl #4
   add     lr, lr, r3, lsl #4
   bne     2b
@@ -714,18 +714,18 @@ neon_transpose8:
   beq     3f
 2:
   @ matrix 0&2 row 0-1
-  vld1.32 {q0, q1}, [r0, :128]!
-  vld1.32 {q2, q3}, [r4, :128]!
+  vld1.32 {q0, q1}, [r0, :64]!
+  vld1.32 {q2, q3}, [r4, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128]!
-  vst1.32 {q2}, [r5, :128]!
-  vst1.32 {q1}, [r6, :128]!
-  vst1.32 {q3}, [r7, :128]!
+  vst1.32 {q0}, [r1, :64]!
+  vst1.32 {q2}, [r5, :64]!
+  vst1.32 {q1}, [r6, :64]!
+  vst1.32 {q3}, [r7, :64]!
 
   @ matrix 1&3 row 0-1
-  vld1.32 {q4, q5}, [r0, :128]!
-  vld1.32 {q6, q7}, [r4, :128]!
+  vld1.32 {q4, q5}, [r0, :64]!
+  vld1.32 {q6, q7}, [r4, :64]!
   vswp    d9,  d12
   vswp    d11, d14
 
@@ -736,18 +736,18 @@ neon_transpose8:
   add     r10, r4, ip
 
   @ matrix 0&2, row 2-3
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128]!
-  vst1.32 {q2}, [r5, :128]!
-  vst1.32 {q1}, [r6, :128]!
-  vst1.32 {q3}, [r7, :128]!
+  vst1.32 {q0}, [r1, :64]!
+  vst1.32 {q2}, [r5, :64]!
+  vst1.32 {q1}, [r6, :64]!
+  vst1.32 {q3}, [r7, :64]!
 
   @ matrix 1&3, row 2-3
-  vld1.32 {q8,  q9},  [r9,  :128]!
-  vld1.32 {q10, q11}, [r10, :128]!
+  vld1.32 {q8,  q9},  [r9,  :64]!
+  vld1.32 {q10, q11}, [r10, :64]!
   vswp    d17, d20
   vswp    d19, d22
 
@@ -758,18 +758,18 @@ neon_transpose8:
   add     r10, r10, ip
 
   @ matrix 0&2, row 4-5
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128]!
-  vst1.32 {q2}, [r5, :128]!
-  vst1.32 {q1}, [r6, :128]!
-  vst1.32 {q3}, [r7, :128]!
+  vst1.32 {q0}, [r1, :64]!
+  vst1.32 {q2}, [r5, :64]!
+  vst1.32 {q1}, [r6, :64]!
+  vst1.32 {q3}, [r7, :64]!
 
   @ matrix 1&3, row 4-5
-  vld1.32 {q12, q13}, [r9,  :128]!
-  vld1.32 {q14, q15}, [r10, :128]!
+  vld1.32 {q12, q13}, [r9,  :64]!
+  vld1.32 {q14, q15}, [r10, :64]!
   vswp    d25, d28
   vswp    d27, d30
 
@@ -780,18 +780,18 @@ neon_transpose8:
   add     r10, r10, ip
 
   @ matrix 0&2, row 6-7
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128], r8
-  vst1.32 {q2}, [r5, :128], r8
-  vst1.32 {q1}, [r6, :128], r8
-  vst1.32 {q3}, [r7, :128], r8
+  vst1.32 {q0}, [r1, :64], r8
+  vst1.32 {q2}, [r5, :64], r8
+  vst1.32 {q1}, [r6, :64], r8
+  vst1.32 {q3}, [r7, :64], r8
 
   @ matrix 1&3, row 6-7
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
 
@@ -802,25 +802,25 @@ neon_transpose8:
   subs    r11, r11, #64
 
   @ these could be replaced with VSTM, but that requires swaps
-  vst1.32 {q4},  [r1, :128]!
-  vst1.32 {q8},  [r1, :128]!
-  vst1.32 {q12}, [r1, :128]!
-  vst1.32 {q0},  [r1, :128], r8
+  vst1.32 {q4},  [r1, :64]!
+  vst1.32 {q8},  [r1, :64]!
+  vst1.32 {q12}, [r1, :64]!
+  vst1.32 {q0},  [r1, :64], r8
 
-  vst1.32 {q6},  [r5, :128]!
-  vst1.32 {q10}, [r5, :128]!
-  vst1.32 {q14}, [r5, :128]!
-  vst1.32 {q2},  [r5, :128], r8
+  vst1.32 {q6},  [r5, :64]!
+  vst1.32 {q10}, [r5, :64]!
+  vst1.32 {q14}, [r5, :64]!
+  vst1.32 {q2},  [r5, :64], r8
 
-  vst1.32 {q5},  [r6, :128]!
-  vst1.32 {q9},  [r6, :128]!
-  vst1.32 {q13}, [r6, :128]!
-  vst1.32 {q1},  [r6, :128], r8
+  vst1.32 {q5},  [r6, :64]!
+  vst1.32 {q9},  [r6, :64]!
+  vst1.32 {q13}, [r6, :64]!
+  vst1.32 {q1},  [r6, :64], r8
 
-  vst1.32 {q7},  [r7, :128]!
-  vst1.32 {q11}, [r7, :128]!
-  vst1.32 {q15}, [r7, :128]!
-  vst1.32 {q3},  [r7, :128], r8
+  vst1.32 {q7},  [r7, :64]!
+  vst1.32 {q11}, [r7, :64]!
+  vst1.32 {q15}, [r7, :64]!
+  vst1.32 {q3},  [r7, :64], r8
 
   @ process all but the last on row
   bne     2b
@@ -829,72 +829,72 @@ neon_transpose8:
   subs    r3, r3, #256
 
   @ matrix 0&2 row 0-1
-  vld1.32 {q0, q1}, [r0, :128]!
-  vld1.32 {q2, q3}, [r4, :128]!
+  vld1.32 {q0, q1}, [r0, :64]!
+  vld1.32 {q2, q3}, [r4, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128]!
-  vst1.32 {q2}, [r5, :128]!
-  vst1.32 {q1}, [r6, :128]!
-  vst1.32 {q3}, [r7, :128]!
+  vst1.32 {q0}, [r1, :64]!
+  vst1.32 {q2}, [r5, :64]!
+  vst1.32 {q1}, [r6, :64]!
+  vst1.32 {q3}, [r7, :64]!
 
   @ matrix 1&3 row 0-1
-  vld1.32 {q4, q5}, [r0, :128]!
-  vld1.32 {q6, q7}, [r4, :128]!
+  vld1.32 {q4, q5}, [r0, :64]!
+  vld1.32 {q6, q7}, [r4, :64]!
   vswp    d9,  d12
   vswp    d11, d14
   add     r9,  r0, ip
   add     r10, r4, ip
 
   @ matrix 0&2, row 2-3
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128]!
-  vst1.32 {q2}, [r5, :128]!
-  vst1.32 {q1}, [r6, :128]!
-  vst1.32 {q3}, [r7, :128]!
+  vst1.32 {q0}, [r1, :64]!
+  vst1.32 {q2}, [r5, :64]!
+  vst1.32 {q1}, [r6, :64]!
+  vst1.32 {q3}, [r7, :64]!
 
   @ matrix 1&3, row 2-3
-  vld1.32 {q8,  q9},  [r9,  :128]!
-  vld1.32 {q10, q11}, [r10, :128]!
+  vld1.32 {q8,  q9},  [r9,  :64]!
+  vld1.32 {q10, q11}, [r10, :64]!
   vswp    d17, d20
   vswp    d19, d22
   add     r9,  r9,  ip
   add     r10, r10, ip
 
   @ matrix 0&2, row 4-5
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128]!
-  vst1.32 {q2}, [r5, :128]!
-  vst1.32 {q1}, [r6, :128]!
-  vst1.32 {q3}, [r7, :128]!
+  vst1.32 {q0}, [r1, :64]!
+  vst1.32 {q2}, [r5, :64]!
+  vst1.32 {q1}, [r6, :64]!
+  vst1.32 {q3}, [r7, :64]!
 
   @ matrix 1&3, row 4-5
-  vld1.32 {q12, q13}, [r9,  :128]!
-  vld1.32 {q14, q15}, [r10, :128]!
+  vld1.32 {q12, q13}, [r9,  :64]!
+  vld1.32 {q14, q15}, [r10, :64]!
   vswp    d25, d28
   vswp    d27, d30
   add     r9,  r9,  ip
   add     r10, r10, ip
 
   @ matrix 0&2, row 6-7
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
-  vst1.32 {q0}, [r1, :128], r8
-  vst1.32 {q2}, [r5, :128], r8
-  vst1.32 {q1}, [r6, :128], r8
-  vst1.32 {q3}, [r7, :128], r8
+  vst1.32 {q0}, [r1, :64], r8
+  vst1.32 {q2}, [r5, :64], r8
+  vst1.32 {q1}, [r6, :64], r8
+  vst1.32 {q3}, [r7, :64], r8
 
   @ matrix 1&3, row 6-7
-  vld1.32 {q0, q1}, [r9,  :128]!
-  vld1.32 {q2, q3}, [r10, :128]!
+  vld1.32 {q0, q1}, [r9,  :64]!
+  vld1.32 {q2, q3}, [r10, :64]!
   vswp    d1, d4
   vswp    d3, d6
 
@@ -903,25 +903,25 @@ neon_transpose8:
   add     r4, r10, r2
 
   @ these could be replaced with VSTM, but that requires swaps
-  vst1.32 {q4},  [r1, :128]!
-  vst1.32 {q8},  [r1, :128]!
-  vst1.32 {q12}, [r1, :128]!
-  vst1.32 {q0},  [r1, :128], lr
+  vst1.32 {q4},  [r1, :64]!
+  vst1.32 {q8},  [r1, :64]!
+  vst1.32 {q12}, [r1, :64]!
+  vst1.32 {q0},  [r1, :64], lr
 
-  vst1.32 {q6},  [r5, :128]!
-  vst1.32 {q10}, [r5, :128]!
-  vst1.32 {q14}, [r5, :128]!
-  vst1.32 {q2},  [r5, :128], lr
+  vst1.32 {q6},  [r5, :64]!
+  vst1.32 {q10}, [r5, :64]!
+  vst1.32 {q14}, [r5, :64]!
+  vst1.32 {q2},  [r5, :64], lr
 
-  vst1.32 {q5},  [r6, :128]!
-  vst1.32 {q9},  [r6, :128]!
-  vst1.32 {q13}, [r6, :128]!
-  vst1.32 {q1},  [r6, :128], lr
+  vst1.32 {q5},  [r6, :64]!
+  vst1.32 {q9},  [r6, :64]!
+  vst1.32 {q13}, [r6, :64]!
+  vst1.32 {q1},  [r6, :64], lr
 
-  vst1.32 {q7},  [r7, :128]!
-  vst1.32 {q11}, [r7, :128]!
-  vst1.32 {q15}, [r7, :128]!
-  vst1.32 {q3},  [r7, :128], lr
+  vst1.32 {q7},  [r7, :64]!
+  vst1.32 {q11}, [r7, :64]!
+  vst1.32 {q15}, [r7, :64]!
+  vst1.32 {q3},  [r7, :64], lr
 
   @ process all columns
   bne     1b

@@ -216,6 +216,8 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
 
     if (ffts_ctzl(N) & 1) {
+        /* x2 = p->ee_ws for ee leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, p->i1 ? 6 : 0, sign);
 
         if (p->i1) {
@@ -224,11 +226,17 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         }
 
         loop_count += 4;
+        /* x11 = p->oe_ws for oe leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, oe_ws));
         generate_leaf_oe_arm64((ffts_insn_t**)&fp, N, 0, sign);
     } else {
+        /* x2 = p->ee_ws for ee leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, N >= 256 ? 2 : 8, sign);
 
         loop_count += 4;
+        /* x11 = p->eo_ws for eo leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, eo_ws));
         generate_leaf_eo_arm64((ffts_insn_t**)&fp, N, 0, sign);
 
         if (p->i1) {
@@ -240,6 +248,8 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     if (p->i1) {
         loop_count += 4 * p->i1;
         generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
+        /* x2 = p->ee_ws for final ee leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, 0, sign);
     }
 
@@ -248,8 +258,14 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     while (pps[0]) {
         size_t ws_is;
 
+        /* Materialize stride (bytes) for base cases: X1 = pps[0] * 8 */
+        {
+            uint64_t strideBytes = ((uint64_t)pps[0]) << 3;
+            ARM64_MOV_IMM64((ffts_insn_t**)&fp, ARM64_X1, strideBytes);
+        }
+
         if (!pN) {
-            /* Load transform size into register */
+            /* Load transform size into register (kept for parity, not used by base case) */
             arm64_emit_instruction((ffts_insn_t**)&fp, 0x52800000 | (pps[0] << 5) | 3);  /* mov w3, #pps[0] */
         } else {
             int offset = (4 * pps[1]) - pAddr;
@@ -261,11 +277,11 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
             if (pps[0] > leaf_N && pps[0] - pN) {
                 int factor = ffts_ctzl(pps[0]) - ffts_ctzl(pN);
                 if (factor > 0) {
-                    /* Shift left */
-                    arm64_emit_instruction((ffts_insn_t**)&fp, 0x53003c63 | (factor << 16));  /* lsl w3, w3, #factor */
+                    /* lsl w3, w3, #factor */
+                    arm64_emit_instruction((ffts_insn_t**)&fp, 0x53003c63 | (factor << 16));
                 } else {
-                    /* Shift right */
-                    arm64_emit_instruction((ffts_insn_t**)&fp, 0x53003c63 | ((-factor) << 16));  /* lsr w3, w3, #(-factor) */
+                    /* lsr w3, w3, #(-factor) */
+                    arm64_emit_instruction((ffts_insn_t**)&fp, 0x53003c63 | ((-factor) << 16));
                 }
             }
         }
@@ -273,7 +289,8 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         ws_is = 8 * p->ws_is[ffts_ctzl(pps[0] / leaf_N) - 1];
         if (ws_is != pLUT) {
             int offset = (int) (ws_is - pLUT);
-            ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X1, ARM64_X1, offset);
+            /* Adjust twiddle pointer in X2 (base cases read twiddles from x2) */
+            ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X2, offset);
         }
 
         if (pps[0] == 2 * leaf_N) {

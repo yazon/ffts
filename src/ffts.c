@@ -162,6 +162,13 @@ ffts_vmem_free(void *addr, size_t length)
 FFTS_API void
 ffts_execute(ffts_plan_t *p, const void *in, void *out)
 {
+    if ((uintptr_t)in  & 0xF) {
+        LOG("ffts_execute: input buffer needs to be aligned to a 16byte boundary\n");
+    }
+    if ((uintptr_t)out & 0xF) {
+        LOG("ffts_execute: output buffer needs to be aligned to a 16byte boundary\n");
+    }
+
     /* TODO: Define NEEDS_ALIGNED properly instead */
 #if defined(HAVE_SSE) || defined(HAVE_NEON)
     if (((uintptr_t) in % 16) != 0) {

@@ -116,11 +116,15 @@ echo "Headers: $INSTALL_DIR/include/"
 # Optional: Create a simple test if we can run ARM64 binaries
 if command -v qemu-aarch64 &> /dev/null && [ "$TOOLCHAIN" = "aarch64-linux-gnu" ]; then
     echo "Testing with QEMU..."
-    # Look for test executable in tests directory (autotools build)
+    # Allow caller to choose a specific emulated CPU; default to a model that
+    # supports the ARMv8.3-A complex-number instructions (FCMLA/FCADD) used by
+    # FFTS’ JIT kernels.  Override by exporting QEMU_CPU, e.g. QEMU_CPU=neoverse-n1.
+    QEMU_CPU_MODEL=${QEMU_CPU:-max}
+
     if [ -f "tests/test" ]; then
-        qemu-aarch64 -L /usr/aarch64-linux-gnu tests/test || true
+        qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L /usr/aarch64-linux-gnu tests/test || true
     elif [ -f "build/ffts_test" ]; then
-        qemu-aarch64 -L /usr/aarch64-linux-gnu build/ffts_test || true
+        qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L /usr/aarch64-linux-gnu build/ffts_test || true
     else
         echo "No test executable found to run with QEMU"
     fi

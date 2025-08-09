@@ -43,6 +43,7 @@
 #include "ffts_internal.h"
 #include "arch/arm64/arm64-codegen.h"
 #include "macros-neon64.h"
+#include "arch/arm64/codegen_arm64_macros.h"
 
 #ifdef HAVE_STRING_H
 #include <string.h>
@@ -113,15 +114,55 @@ generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
     
     /* Generate standard ARM64 function prologue */
     arm64_generate_prologue(p, ARM64_X0, ARM64_X1);
-    
-    /* Set up constants pointer in x2 if needed */
-    if (plan->constants) {
-        /* adrp x2, constants */
-        /* add x2, x2, :lo12:constants */
-        /* For now, assume constants are passed as parameter */
-        ARM64_MOV_X(p, ARM64_X2, ARM64_X2);
-    }
-    
+
+    /* Preserve plan pointer in x19 for field loads */
+    ARM64_MOV_X(p, ARM64_X19, ARM64_X0);   /* x19 = plan */
+
+    /* Establish calling-convention registers expected by kernels */
+    /* x0 = out (move from entry x2) */
+    ARM64_MOV_X(p, ARM64_X0, ARM64_X2);
+
+    /* x12 = plan->offsets (LDR x12, [x19, #off]) */
+    size_t off_offsets = (size_t)((const char*)&plan->offsets - (const char*)plan);
+    ARM64_LDRI_X(p, ARM64_X12, ARM64_X19, (uint32_t)off_offsets);
+
+    /* x1 is used as WS (twiddle) base pointer throughout codegen.c,
+     * so leave it as the LUT pointer argument and keep it updated there. */
+
+    /* Compute data stream pointers x3..x10 from out pointer (x0)
+     * using stride = N * sizeof(complex float) = N * 8 bytes.
+     * Pattern (mirrors ARM32):
+     *   x3  = x0
+     *   x7  = x0 + 1*stride
+     *   x5  = x0 + 2*stride
+     *   x10 = x7 + 2*stride
+     *   x4  = x5 + 2*stride
+     *   x8  = x10 + 2*stride
+     *   x6  = x4 + 2*stride
+     *   x9  = x8 + 2*stride
+     */
+    size_t off_N = (size_t)((const char*)&plan->N - (const char*)plan);
+    /* Load N into x20 */
+    ARM64_LDRI_X(p, ARM64_X20, ARM64_X19, (uint32_t)off_N);
+    /* x3 = x0 */
+    ARM64_MOV_X(p, ARM64_X3, ARM64_X0);
+    /* Helper lambda-like: emit ADD Xd, Xn, Xm LSL #imm (shifted register) */
+    /* Encoding: 0x8B000000 | (Xm<<16) | (shift<<22) | (imm6<<10) | (Xn<<5) | Xd */
+    /* x7  = x0 + x20 LSL #3  (1*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((3u & 0x3fu) << 10) | ((ARM64_X0 & 0x1f) << 5) | (ARM64_X7 & 0x1f));
+    /* x5  = x0 + x20 LSL #4  (2*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X0 & 0x1f) << 5) | (ARM64_X5 & 0x1f));
+    /* x10 = x7 + x20 LSL #4  (x7 + 2*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X7 & 0x1f) << 5) | (ARM64_X10 & 0x1f));
+    /* x4  = x5 + x20 LSL #4  (x5 + 2*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X5 & 0x1f) << 5) | (ARM64_X4 & 0x1f));
+    /* x8  = x10 + x20 LSL #4 (x10 + 2*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X10 & 0x1f) << 5) | (ARM64_X8 & 0x1f));
+    /* x6  = x4 + x20 LSL #4  (x4 + 2*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X4 & 0x1f) << 5) | (ARM64_X6 & 0x1f));
+    /* x9  = x8 + x20 LSL #4  (x8 + 2*stride) */
+    arm64_emit_instruction(p, 0x8B000000u | ((ARM64_X20 & 0x1f) << 16) | (0u << 22) | ((4u & 0x3fu) << 10) | ((ARM64_X8 & 0x1f) << 5) | (ARM64_X9 & 0x1f));
+
     return start;
 }
 
@@ -135,96 +176,56 @@ generate_epilogue_arm64(ffts_insn_t **p)
 static inline void
 generate_leaf_init_arm64(ffts_insn_t **p, uint32_t loop_count)
 {
-    /* Initialize loop counter for ARM64 */
-    if (loop_count <= 0xfff) {
-        /* mov w3, #loop_count */
-        arm64_emit_instruction(p, 0x52800000 | (loop_count << 5) | 3);
+    /* Initialize loop counter for ARM64 in w11 (used by leaf blobs) */
+    if (loop_count <= 0xffffu) {
+        /* mov w11, #imm16 */
+        arm64_emit_instruction(p, 0x52800000u | ((loop_count & 0xffffu) << 5) | 11u);
     } else {
-        /* Use movz/movk sequence for larger values */
-        arm64_emit_instruction(p, 0x52800003 | ((loop_count & 0xffff) << 5));
-        if (loop_count > 0xffff) {
-            arm64_emit_instruction(p, 0x72a00003 | (((loop_count >> 16) & 0xffff) << 5));
-        }
+        /* movz w11, #(imm16) */
+        arm64_emit_instruction(p, 0x52800000u | (((loop_count & 0xffffu)) << 5) | 11u);
+        /* movk w11, #(imm16), lsl #16 */
+        arm64_emit_instruction(p, 0x72a00000u | ((((loop_count >> 16) & 0xffffu)) << 5) | 11u);
     }
 }
 
 static inline void
 generate_leaf_ee_arm64(ffts_insn_t **p, size_t N, size_t offset, int sign)
 {
-    /* Generate even-even leaf computation for ARM64 */
-    /* This implements the core FFT butterfly operations */
-    
-    /* Load data using LDP instructions for better performance */
-    ARM64_LDP_Q(p, ARM64_V0, ARM64_V1, ARM64_X0, offset / 8);
-    ARM64_LDP_Q(p, ARM64_V2, ARM64_V3, ARM64_X0, (offset + N/2) / 8);
-    
-    /* Perform butterfly operations */
-    arm64_generate_butterfly_4s(p, ARM64_V0, ARM64_V2, ARM64_V4, ARM64_V5);
-    arm64_generate_butterfly_4s(p, ARM64_V1, ARM64_V3, ARM64_V6, ARM64_V7);
-    
-    /* Store results */
-    ARM64_STP_Q(p, ARM64_V0, ARM64_V1, ARM64_X0, offset / 8);
-    ARM64_STP_Q(p, ARM64_V2, ARM64_V3, ARM64_X0, (offset + N/2) / 8);
-}
-
-static inline void
-generate_leaf_eo_arm64(ffts_insn_t **p, size_t N, size_t offset, int sign)
-{
-    /* Generate even-odd leaf computation for ARM64 */
-    /* Similar to ee but with different twiddle factors */
-    
-    /* Load twiddle factors */
-    ARM64_LDP_Q(p, ARM64_V8, ARM64_V9, ARM64_X1, 0);  /* Load twiddle factors */
-    
-    /* Load data */
-    ARM64_LDP_Q(p, ARM64_V0, ARM64_V1, ARM64_X0, offset / 8);
-    ARM64_LDP_Q(p, ARM64_V2, ARM64_V3, ARM64_X0, (offset + N/4) / 8);
-    
-    /* Apply twiddle factors and perform butterflies */
-    arm64_generate_complex_mul(p, ARM64_V2, ARM64_V2, ARM64_V8, ARM64_V9);
-    arm64_generate_complex_mul(p, ARM64_V3, ARM64_V3, ARM64_V10, ARM64_V11);
-    
-    arm64_generate_butterfly_4s(p, ARM64_V0, ARM64_V2, ARM64_V4, ARM64_V5);
-    arm64_generate_butterfly_4s(p, ARM64_V1, ARM64_V3, ARM64_V6, ARM64_V7);
-    
-    /* Store results */
-    ARM64_STP_Q(p, ARM64_V0, ARM64_V1, ARM64_X0, offset / 8);
-    ARM64_STP_Q(p, ARM64_V2, ARM64_V3, ARM64_X0, (offset + N/4) / 8);
-}
-
-static inline void
-generate_leaf_oe_arm64(ffts_insn_t **p, size_t N, size_t offset, int sign)
-{
-    /* Generate odd-even leaf computation for ARM64 */
-    generate_leaf_eo_arm64(p, N, offset, sign);  /* Similar implementation */
+    (void)N; (void)offset;
+    extern const uint8_t neon64_ee[];
+    extern const uint8_t neon64_oo[];
+    uint32_t *dst = arm64_copy_blob((uint32_t**)p, neon64_ee, neon64_oo);
+    arm64_patch_neon64_ee(dst, sign);
 }
 
 static inline void
 generate_leaf_oo_arm64(ffts_insn_t **p, size_t N, size_t offset, int sign)
 {
-    /* Generate odd-odd leaf computation for ARM64 */
-    /* Most complex case with full twiddle factor application */
-    
-    /* Load twiddle factors for both stages */
-    ARM64_LDP_Q(p, ARM64_V8, ARM64_V9, ARM64_X1, 0);   /* First stage twiddles */
-    ARM64_LDP_Q(p, ARM64_V10, ARM64_V11, ARM64_X1, 2); /* Second stage twiddles */
-    ARM64_LDP_Q(p, ARM64_V12, ARM64_V13, ARM64_X1, 4); /* Third stage twiddles */
-    
-    /* Load data */
-    ARM64_LDP_Q(p, ARM64_V0, ARM64_V1, ARM64_X0, offset / 8);
-    ARM64_LDP_Q(p, ARM64_V2, ARM64_V3, ARM64_X0, (offset + N/8) / 8);
-    
-    /* Apply all twiddle factors */
-    arm64_generate_complex_mul(p, ARM64_V2, ARM64_V2, ARM64_V8, ARM64_V9);
-    arm64_generate_complex_mul(p, ARM64_V3, ARM64_V3, ARM64_V10, ARM64_V11);
-    
-    /* Perform butterflies */
-    arm64_generate_butterfly_4s(p, ARM64_V0, ARM64_V2, ARM64_V4, ARM64_V5);
-    arm64_generate_butterfly_4s(p, ARM64_V1, ARM64_V3, ARM64_V6, ARM64_V7);
-    
-    /* Store results */
-    ARM64_STP_Q(p, ARM64_V0, ARM64_V1, ARM64_X0, offset / 8);
-    ARM64_STP_Q(p, ARM64_V2, ARM64_V3, ARM64_X0, (offset + N/8) / 8);
+    (void)N; (void)offset;
+    extern const uint8_t neon64_oo[];
+    extern const uint8_t neon64_eo[];
+    uint32_t *dst = arm64_copy_blob((uint32_t**)p, neon64_oo, neon64_eo);
+    arm64_patch_neon64_oo(dst, sign);
+}
+
+static inline void
+generate_leaf_eo_arm64(ffts_insn_t **p, size_t N, size_t offset, int sign)
+{
+    (void)N; (void)offset;
+    extern const uint8_t neon64_eo[];
+    extern const uint8_t neon64_oe[];
+    uint32_t *dst = arm64_copy_blob((uint32_t**)p, neon64_eo, neon64_oe);
+    arm64_patch_neon64_eo(dst, sign);
+}
+
+static inline void
+generate_leaf_oe_arm64(ffts_insn_t **p, size_t N, size_t offset, int sign)
+{
+    (void)N; (void)offset;
+    extern const uint8_t neon64_oe[];
+    extern const uint8_t neon64_end[];
+    uint32_t *dst = arm64_copy_blob((uint32_t**)p, neon64_oe, neon64_end);
+    arm64_patch_neon64_oe(dst, sign);
 }
 
 static inline void

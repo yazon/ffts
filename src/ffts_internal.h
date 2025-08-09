@@ -59,10 +59,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #endif
 
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif
-
 #include <stdio.h>
 
 #if defined(HAVE_DECL_ALIGNED_ALLOC) && !HAVE_DECL_ALIGNED_ALLOC

@@ -41,8 +41,15 @@ static inline void arm64_patch_neon64_x8_t(uint32_t *blob, int sign)
         /* These word indices are identical to the ARM32 variant. */
         static const int idx[] = { 31, 32, 33, 34, 65, 66, 70, 74,
                                    97, 98, 102, 104 };
+        /* Bound the patching to the actual x8 blob range to avoid corrupting
+           adjacent code in the JIT buffer. */
+        extern const uint8_t neon64_x8[];
+        extern const uint8_t neon64_x8_t[];
+        size_t size_words = (size_t)(neon64_x8_t - neon64_x8) / sizeof(uint32_t);
         for (unsigned i = 0; i < sizeof(idx)/sizeof(idx[0]); ++i) {
-            blob[idx[i]] ^= 0x00800000u; /* toggle AArch64 add/sub select bit (bit 23) */
+            if ((size_t)idx[i] < size_words) {
+                blob[idx[i]] ^= 0x00800000u; /* toggle AArch64 add/sub select bit (bit 23) */
+            }
         }
     }
 }

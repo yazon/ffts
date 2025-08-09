@@ -129,12 +129,12 @@ generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
     /* x1 is used as WS (twiddle) base pointer throughout codegen.c,
      * so leave it as the LUT pointer argument and keep it updated there. */
 
-    /* Compute data stream pointers x3..x10 from out pointer (x0)
+    /* Compute data stream pointers x3..x10 from input pointer (x1)
      * using stride = N * sizeof(complex float) = N * 8 bytes.
      * Pattern (mirrors ARM32):
-     *   x3  = x0
-     *   x7  = x0 + 1*stride
-     *   x5  = x0 + 2*stride
+     *   x3  = x1
+     *   x7  = x1 + 1*stride
+     *   x5  = x1 + 2*stride
      *   x10 = x7 + 2*stride
      *   x4  = x5 + 2*stride
      *   x8  = x10 + 2*stride
@@ -144,13 +144,13 @@ generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
     size_t off_N = (size_t)((const char*)&plan->N - (const char*)plan);
     /* Load N into x20 */
     ARM64_LDRI_X(p, ARM64_X20, ARM64_X19, (uint32_t)off_N);
-    /* x3 = x0 */
-    ARM64_MOV_X(p, ARM64_X3, ARM64_X0);
+    /* x3 = x1 */
+    ARM64_MOV_X(p, ARM64_X3, ARM64_X1);
     /* Compute stream pointers using ADD (shifted register): Xd = Xn + Xm LSL #imm */
-    /* x7  = x0 + x20 LSL #3  (1*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X7,  ARM64_X0,  ARM64_X20, ARM64_SHIFT_LSL, 3);
-    /* x5  = x0 + x20 LSL #4  (2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X5,  ARM64_X0,  ARM64_X20, ARM64_SHIFT_LSL, 4);
+    /* x7  = x1 + x20 LSL #3  (1*stride) */
+    arm64_emit_add_shifted_reg(p, ARM64_X7,  ARM64_X1,  ARM64_X20, ARM64_SHIFT_LSL, 3);
+    /* x5  = x1 + x20 LSL #4  (2*stride) */
+    arm64_emit_add_shifted_reg(p, ARM64_X5,  ARM64_X1,  ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x10 = x7 + x20 LSL #4  (x7 + 2*stride) */
     arm64_emit_add_shifted_reg(p, ARM64_X10, ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 4);
     /* x4  = x5 + x20 LSL #4  (x5 + 2*stride) */
@@ -175,15 +175,13 @@ generate_epilogue_arm64(ffts_insn_t **p)
 static inline void
 generate_leaf_init_arm64(ffts_insn_t **p, uint32_t loop_count)
 {
-    /* Initialize loop counter for ARM64 in w11 (used by leaf blobs) */
-    if (loop_count <= 0xffffu) {
-        /* mov w11, #imm16 */
-        arm64_emit_instruction(p, 0x52800000u | ((loop_count & 0xffffu) << 5) | 11u);
-    } else {
-        /* movz w11, #(imm16) */
-        arm64_emit_instruction(p, 0x52800000u | (((loop_count & 0xffffu)) << 5) | 11u);
-        /* movk w11, #(imm16), lsl #16 */
-        arm64_emit_instruction(p, 0x72a00000u | ((((loop_count >> 16) & 0xffffu)) << 5) | 11u);
+    /* Initialize loop counter for ARM64 in x11 (used by leaf blobs) */
+    /* Use 64-bit MOVZ/MOVK to avoid undefined high-half when blobs use X11 */
+    /* movz x11, #(imm16) */
+    arm64_emit_instruction(p, ARM64_MOVZ_ENCODE(1, 11u, (loop_count & 0xffffu), 0));
+    /* movk x11, #(imm16), lsl #16 if needed */
+    if ((loop_count >> 16) & 0xffffu) {
+        arm64_emit_instruction(p, ARM64_MOVK_ENCODE(1, 11u, ((loop_count >> 16) & 0xffffu), 1));
     }
 }
 

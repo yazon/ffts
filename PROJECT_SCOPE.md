@@ -17,6 +17,15 @@ Compare the textual outputs line-by-line to ensure matching behavior. For automa
 - The test program conditionally uses the 2-arg complex multiply helpers on ARM64 and the legacy 3-arg helpers on ARM32 via `macros.h` selection logic.
 - Tests cover: load/store, arithmetic ops, data reorg helpers, XOR sign masks, IMULI, IMUL, IMULJ, and interleaved LD2/ST2.
 
+## Current Objectives (ARM64)
+- Achieve correctness for N=8 and N=16 in dynamic JIT path with low L2 error.
+- Eliminate illegal instruction/segfault at N≥32 by fixing prologue, loop counters, twiddle/offset pointer setup.
+- Keep dynamic generation enabled; static kernels only for isolation.
+
+## Debug Aids
+- `FFTS_DEBUG_PATCH=1` to log sign patch toggles.
+- `FFTS_DEBUG_JIT=1` to dump first 256 bytes of the generated JIT buffer.
+
 ## Short-term Objective: ARM64 Size-8/16 Correctness
 
 - Fix large relative L2 error for N=8 and N=16 when running `tests/test` under ARM64.

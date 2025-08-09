@@ -803,8 +803,8 @@ neon64_oo:
   trn2   v2.4s, v24.4s, v2.4s
 
   // Load offsets and calculate output addresses
-  ldr    w2, [x1], #4                       // Load offset 1, post-increment offsets pointer
-  ldr    w12, [x1], #4                      // Load offset 2, post-increment offsets pointer
+  ldr    w2, [x12], #4                       // Load offset 1, post-increment offsets pointer (offsets in x12)
+  ldr    w16, [x12], #4                     // Load offset 2, post-increment offsets pointer
 
   // Second complex rotation, for q4, q5, q6, q7
   // vadd.f32 q4, q12, q11
@@ -816,7 +816,7 @@ neon64_oo:
 
   // Calculate final output addresses
   add    x2, x0, x2, lsl #2                 // addr1 = base + offset1 * 4
-  add    x12, x0, x12, lsl #2               // addr2 = base + offset2 * 4
+  add    x16, x0, x16, lsl #2               // addr2 = base + offset2 * 4
 
   // Prepare more data for storing
   mov    v24.16b, v1.16b         // Temp for v1
@@ -827,7 +827,7 @@ neon64_oo:
   // vst2.32 {q0, q1}, [r2]!
   st2    {v0.4s, v1.4s}, [x2], #32          // Store interleaved v0(Re), v1(Im) to addr1 and advance
   // vst2.32 {q2, q3}, [lr]!
-  st2    {v2.4s, v3.4s}, [x12], #32         // Store interleaved v2(Re), v3(Im) to addr2 and advance
+  st2    {v2.4s, v3.4s}, [x16], #32         // Store interleaved v2(Re), v3(Im) to addr2 and advance
 
   // Prepare final vectors for storing
   mov    v24.16b, v4.16b         // Temp for v4
@@ -841,7 +841,7 @@ neon64_oo:
   // vst2.32 {q4, q5}, [r2]!
   st2    {v4.4s, v5.4s}, [x2]               // Store interleaved v4(Re), v5(Im) to addr1
   // vst2.32 {q6, q7}, [lr]!
-  st2    {v6.4s, v7.4s}, [x12]              // Store interleaved v6(Re), v7(Im) to addr2
+  st2    {v6.4s, v7.4s}, [x16]              // Store interleaved v6(Re), v7(Im) to addr2
 
   bne    1b                                 // Branch to top of loop if counter is not zero
 

@@ -523,6 +523,20 @@ ffts_init_1d(size_t N, int sign)
             goto cleanup;
         }
 
+#if defined(__aarch64__)
+        {
+            const char *dbg = getenv("FFTS_DEBUG_JIT");
+            if (dbg) {
+                uint32_t *w = (uint32_t*)p->transform_base;
+                size_t dump_words = 256; /* 1 KB */
+                fprintf(stderr, "[ARM64][jit] base=%p size=%zu bytes\n", p->transform_base, (size_t)p->transform_size);
+                for (size_t i = 0; i < dump_words; ++i) {
+                    fprintf(stderr, "[ARM64][jit] %04zu: %08x\n", i, w[i]);
+                }
+            }
+        }
+#endif
+
         /* enable execution with read access for the block */
         if (ffts_allow_execute(p->transform_base, p->transform_size)) {
             goto cleanup;
@@ -531,6 +545,11 @@ ffts_init_1d(size_t N, int sign)
         /* flush from the instruction cache */
         if (ffts_flush_instruction_cache(p->transform_base, p->transform_size)) {
             goto cleanup;
+        }
+
+        const char *dbg_jit_ready = getenv("FFTS_DEBUG_JIT");
+        if (dbg_jit_ready) {
+            fprintf(stderr, "[ARM64][jit-ready] N=%zu leaf_N=%zu base=%p size=%zu\n", N, leaf_N, p->transform_base, (size_t)p->transform_size);
         }
 #endif
     } else {

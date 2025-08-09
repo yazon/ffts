@@ -8,3 +8,10 @@
   - New doc: `doc/ARM64_PORT_REVIEW.md`
   - TODO: Parity helpers for prologue/epilogue, constant synthesis, complex multiply, bit-reverse fixes.
 - Fix ARM64 FFT size-8 correctness: use AArch64 add/sub select bit (0x00800000) in sign-dependent patching for `neon64_x8_t` and related helpers. Expected to reduce N=8/N=16 relative L2 error to parity with ARM32. 
+- ARM64 N=8/16 parity: identified mismatch due to calling base-case blobs with `x0 = out` instead of `x0 = input`. Plan to wrap `neon64_x8`/`neon64_x8_t` invocations with `mov x0, x1` before and `mov x0, x2` after so leaves still see `x0 = out`.
+
+### 2025-08-09
+- ARM64: Fixed JIT prologue stream pointer setup. Replaced ad-hoc ADD (shifted register) encodings with `arm64_emit_add_shifted_reg` helper; base register now x0.
+- ARM64: Tightened size-8 base-case copy range to [neon64_x8 .. neon64_x8_t) and bounded sign patching to blob range.
+- ARM64: Refactored sign-patching to a pattern-based toggle for AdvSIMD FP add/sub and mla/mls (bit 23), avoiding corruption outside blob bounds.
+- ARM64: Added optional debug envs `FFTS_DEBUG_PATCH` and `FFTS_DEBUG_JIT` to trace patching and dump JIT words. 

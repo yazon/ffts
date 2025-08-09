@@ -33,7 +33,7 @@ We will proceed in three phases per repository rules: Analysis → Planning → 
 3) JIT integration on ARM64
 - Trace entry registers for the generated transform: at function entry, AAPCS64 dictates x0=plan, x1=in, x2=out.
 - Ensure ARM64 prologue configures:
-  - x3..x10: eight in-stream pointers computed from x0 (out base) and N*8 stride (see doc’s Fig. 8 and ARM32 prologue).
+  - x3..x10: eight in-stream pointers computed from x1 (input base) and stride N (bytes) via chained adds, matching ARM32 `neon.s`.
   - x12: `plan->offsets` pointer (δk offsets used by leaf kernels to compute destinations).
   - x0: out pointer (move x2 → x0), preserved plan pointer (x19) for LDRs.
   - Twiddle pointers per kernel: ee uses x2; eo/oe use x11; (base-case x8 uses x12 as LUT internally).
@@ -51,6 +51,8 @@ We will proceed in three phases per repository rules: Analysis → Planning → 
   - eo: copy [neon64_eo .. neon64_oe)
   - oe: copy [neon64_oe .. neon64_end)
 - Reconfirm all indices in `codegen_arm64_macros.h` correspond to AArch64 blobs (not ARM32)
+- Use 32-bit offsets (w-loads) from x12 with post-increment #4; compute addresses as x0 + offset<<2 (matching ARM32 `neon.s`).
+- Do not clobber x12 with destination pointers; compute secondary destination into a temp GPR (x16) when needed.
 
 5) Instruction-by-instruction cross-check of each kernel
 - x4/x8/x8_t: complex mul and butterfly, loads/stores, stride usage (r1/x1), and that x8_t patching flips the right ops for inverse.
@@ -60,10 +62,12 @@ We will proceed in three phases per repository rules: Analysis → Planning → 
 - δk offsets: Confirm `ffts_elaborate_tree`/`INIT-OFFSETS` semantics match doc Fig. 3 and that leaf kernels use δk (x12) to place outputs (no explicit bit-reversal pass).
 - Sign handling: NEON variant absorbs sign in code; verify our runtime sign patching (bit 23) reproduces forward/inverse differences (doc Sec. VI).
 - Base cases: Size-8 is the largest without spills (doc Sec. V). Verify our AArch64 base cases still use 16 regs (q0–q15) and avoid callee-saved spills.
+- Confirm stream-pointer base (input) for x4/x8/x8_t consistent with ARM32 macro usage.
 
 7) Branching and code-size sanity
 - Ensure all internal branches within copied blobs are PC-relative and remain valid after relocation.
 - Ensure no blob references external labels outside copied range.
+- Validate immediate encodings (ADD/LDR) use canonical encoders; avoid raw literals that can introduce SIGILL.
 
 ### Cross-check from extracted_text2.md (requirements distilled)
 - Algorithm: conjugate-pair split-radix with δk precomputed offsets; base cases (N≤16) executed iteratively, then recursion free of base cases (FFTS-NOLEAVES).
@@ -84,30 +88,43 @@ A) Make base cases correct (N=8/16)
 - Correct x8 blob copy range to [neon64_x8 .. neon64_x8_t).
 - Verify and adjust sign patch routine for x8.
 - Add a minimal unit harness to run N=8 and N=16 using JIT-only path.
+- Ensure base-case calling convention matches AArch64 assembly expectations: call `neon64_x8`/`neon64_x8_t` with `x0 = input_base (x1)`, not `out`. Bracket the base-case with `mov x0, x1` before and `mov x0, x2` after, so later leaves still see `x0 = out`.
+- Keep `x1` as byte stride (N << 3) as currently emitted; do not reuse prologue-computed `x3..x10` for base-cases since the blobs recompute them from `x0` internally.
 
 B) Fix ARM64 JIT prologue/setup
 - Implement an ARM64 prologue mirroring ARM32 register setup:
   - Preserve plan pointer in x19.
-  - Compute in-stream pointers x3..x10 from x1 and N.
+  - Compute in-stream pointers x3..x10 from x1 and N (bytes).
   - Load x12 with `plan->offsets`.
   - Move out pointer from x2→x0.
-  - Load correct twiddle ws into x2 just before the specific leaf kernel (ee/e o/oo/oe) is emitted.
-  - Initialize x11 loop counter to the correct iteration count (use p->i0/p->i1, matching ARM32 logic).
-- Ensure leaf kernel emission order matches the original ARM32 selection logic.
+  - Twiddle pointers per kernel: ee uses x2; eo/oe use x11; (base-case x8 uses LUT via x12 internally).
+  - x11: loop counter used by the leaf kernels.
+- Add explicit note: base-case blobs (`neon64_x8`, `neon64_x8_t`) expect `x0` = data base and recompute x3..x10 themselves. The prologue-computed x3..x10 are for leaf kernels only and must be ignored by base-case calls.
 
 C) Leaf kernels correctness
 - Verify each leaf kernel receives correct x2 (ee_ws/e o_ws/oe_ws), x12, x3..x10, x11.
 - Audit all st2/ld2 pairs to ensure consecutive register operands.
 - Re-run patch indices on AArch64 bit 23, update any incorrect tables.
+- Enforce offset handling: w-loads from x12 with #4 post-increment; scale addresses by lsl #2; keep x12 intact.
 
 D) Robustness of immediate encoding
 - Replace raw literal encodings with helper functions where possible.
 - For ADD immediate beyond 12 bits, emit multiple adds (as done for stack locals) to avoid silent truncation.
+- Use canonical LDR/STR unsigned offset encodings for W/X registers; avoid size-field hacks.
 
 E) Testing and instrumentation
 - Add a debug mode to print first few complex outputs for N=8/16 to quickly spot sign/layout errors.
 - Add `scripts/run_arm64_tests.sh` to invoke qemu-aarch64 with adjustable QEMU_CPU.
 - Keep `tests/test` as the authoritative acceptance test.
+- Add optional JIT dump and address instrumentation for first iteration of leaves to pinpoint bad pointers.
+
+F) Focused path for N=8/N=16 (PRIORITY)
+- Compare ARM32 `neon_x8`/`neon_x8_t` and AArch64 `neon64_x8`/`neon64_x8_t` instruction sequences (mul/add/sub ordering and twiddle usage).
+- Ensure first x8 stage uses the inlined `neon64_x8_t` blob (like ARM32) when there is no sibling stage, to preserve correct interleaving. When inlining, precede with `mov x0, x1` and restore `mov x0, x2` afterwards.
+- Ensure base-case calls always operate on the input buffer via `x0`; outputs are written in-place for the base stage and subsequent leaves place data using `δk` offsets into the final output.
+- Verify twiddle base (x2) and LUT walk match ARM32 (two ld of {v2,v3} per iteration, post #32).
+- Validate that x1 stride is in bytes and that x0/x1 bases map to out/in respectively across x8/x4 base-case calls.
+- Acceptance: N=8 and N=16 produce low L2 error comparable to ARM32 before proceeding to N>=32.
 
 ---
 
@@ -116,6 +133,7 @@ E) Testing and instrumentation
 - Verify N=2..2^18 forward and inverse runs complete without crash and with low error.
 - Compare ARM32 vs ARM64 outputs on a few sizes to ensure close parity.
 - Ensure dynamic code path is used (no accidental static substitution) per build scripts.
+- Validate on real ARM64 hardware if QEMU divergence is suspected.
 
 ---
 

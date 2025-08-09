@@ -212,7 +212,11 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     /* ARM64 code generation path */
     start = (insns_t*)generate_prologue_arm64((ffts_insn_t**)&fp, p);
 
+    /* Ensure X1 holds p->ws base for base cases and leaves that adjust from it */
+    ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X1, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws));
+
     loop_count = 4 * p->i0;
+    /* ee/oo leaves use x11 as loop counter */
     generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
 
     if (ffts_ctzl(N) & 1) {
@@ -222,11 +226,13 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
 
         if (p->i1) {
             loop_count += 4 * p->i1;
+            /* refresh loop counter before next oo leaf */
+            generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
             generate_leaf_oo_arm64((ffts_insn_t**)&fp, N, loop_count, sign);
         }
 
         loop_count += 4;
-        /* x11 = p->oe_ws for oe leaf */
+        /* x11 = p->oe_ws for oe leaf (twiddle pointer). Do NOT overwrite x11 with loop count. */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, oe_ws));
         generate_leaf_oe_arm64((ffts_insn_t**)&fp, N, 0, sign);
     } else {
@@ -235,19 +241,50 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, N >= 256 ? 2 : 8, sign);
 
         loop_count += 4;
-        /* x11 = p->eo_ws for eo leaf */
+        /* x11 = p->eo_ws for eo leaf (twiddle pointer). Do NOT overwrite x11 with loop count. */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, eo_ws));
         generate_leaf_eo_arm64((ffts_insn_t**)&fp, N, 0, sign);
 
         if (p->i1) {
             loop_count += 4 * p->i1;
+            /* refresh loop counter for oo */
+            generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
             generate_leaf_oo_arm64((ffts_insn_t**)&fp, N, loop_count, sign);
         }
     }
 
     if (p->i1) {
         loop_count += 4 * p->i1;
+        /* ee uses x11 as loop counter again */
         generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
+
+        /* Rotate stream pointers as in ARM32 before the final ee leaf
+           (use X2 as temporary):
+           - swap x3 <-> x7
+           - swap x4 <-> x8
+           - swap x5 <-> x9
+           - swap x6 <-> x10
+           - swap x9 <-> x10 */
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X3);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X7);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X7, ARM64_X2);
+
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X4);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X4, ARM64_X8);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X8, ARM64_X2);
+
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X5);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X5, ARM64_X9);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X9, ARM64_X2);
+
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X6);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X6, ARM64_X10);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X10, ARM64_X2);
+
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X9);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X9, ARM64_X10);
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X10, ARM64_X2);
+
         /* x2 = p->ee_ws for final ee leaf */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, 0, sign);
@@ -295,10 +332,35 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
 
         if (pps[0] == 2 * leaf_N) {
             /* Call 4-point base case */
+            /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
+            ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
+            ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X1);
             arm64_emit_bl((ffts_insn_t**)&fp, (int32_t)(((ffts_insn_t*)x_4_addr - (ffts_insn_t*)fp - 1) * 4));
+            /* Restore x0 to prior base (out/current destination base) */
+            ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X20);
         } else {
-            /* Call 8-point base case */
-            arm64_emit_bl((ffts_insn_t**)&fp, (int32_t)(((ffts_insn_t*)x_8_addr - (ffts_insn_t*)fp - 1) * 4));
+            /* For the first x8 stage when there is no sibling (pps[2] == 0),
+               inline-copy the specialized x8_t blob like ARM32 does to match
+               data re-/interleaving semantics; otherwise call the x8 subroutine. */
+            if (!pps[2]) {
+                /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X1);
+                extern const uint8_t neon64_x8_t[];
+                extern const uint8_t neon64_ee[];
+                uint32_t *dst = arm64_copy_blob((uint32_t**)&fp, neon64_x8_t, neon64_ee);
+                arm64_patch_neon64_x8_t(dst, sign);
+                /* Restore x0 to prior base (out/current destination base) */
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X20);
+            } else {
+                /* Call 8-point base case */
+                /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X1);
+                arm64_emit_bl((ffts_insn_t**)&fp, (int32_t)(((ffts_insn_t*)x_8_addr - (ffts_insn_t*)fp - 1) * 4));
+                /* Restore x0 to prior base (out/current destination base) */
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X20);
+            }
         }
 
         pAddr = 4 * pps[1];

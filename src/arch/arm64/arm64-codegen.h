@@ -168,11 +168,24 @@ typedef enum {
     ((sf) << 31 | 0x72800000 | ((shift) & 3) << 21 | ((imm16) & 0xffff) << 5 | ((rd) & 0x1f))
 
 /* Load/Store instructions */
-#define ARM64_LDR_IMM_ENCODE(size, rt, rn, imm12) \
-    ((size) << 30 | 0x39000000 | ((imm12) & 0xfff) << 10 | ((rn) & 0x1f) << 5 | ((rt) & 0x1f))
+/* For general-purpose register loads/stores with unsigned immediate offset,
+   use the canonical opcodes:
+   - LDR Wt, [Xn, #imm] : 0xB9400000 (imm scaled by 4)
+   - STR Wt, [Xn, #imm] : 0xB9000000 (imm scaled by 4)
+   - LDR Xt, [Xn, #imm] : 0xF9400000 (imm scaled by 8)
+   - STR Xt, [Xn, #imm] : 0xF9000000 (imm scaled by 8)
+*/
+#define ARM64_LDR_W_UOFF(rt, rn, imm12) \
+    (0xB9400000u | (((imm12) & 0x0fffu) << 10) | (((rn) & 0x1fu) << 5) | ((rt) & 0x1fu))
 
-#define ARM64_STR_IMM_ENCODE(size, rt, rn, imm12) \
-    ((size) << 30 | 0x39000000 | 1 << 22 | ((imm12) & 0xfff) << 10 | ((rn) & 0x1f) << 5 | ((rt) & 0x1f))
+#define ARM64_STR_W_UOFF(rt, rn, imm12) \
+    (0xB9000000u | (((imm12) & 0x0fffu) << 10) | (((rn) & 0x1fu) << 5) | ((rt) & 0x1fu))
+
+#define ARM64_LDR_X_UOFF(rt, rn, imm12) \
+    (0xF9400000u | (((imm12) & 0x0fffu) << 10) | (((rn) & 0x1fu) << 5) | ((rt) & 0x1fu))
+
+#define ARM64_STR_X_UOFF(rt, rn, imm12) \
+    (0xF9000000u | (((imm12) & 0x0fffu) << 10) | (((rn) & 0x1fu) << 5) | ((rt) & 0x1fu))
 
 /* SIMD Load/Store Pair instructions */
 #define ARM64_LDP_SIMD_ENCODE(opc, rt, rt2, rn, imm7) \
@@ -312,37 +325,40 @@ arm64_mov_imm64(arm64instr_t **p, ARM64Reg rd, uint64_t imm)
 static inline void
 arm64_ldri(arm64instr_t **p, ARM64Reg dst, ARM64Reg base, uint32_t offset, int size)
 {
-    /* ARM64 LDR immediate has different size encodings:
-     * size = 0: 32-bit load (W register)
-     * size = 1: 64-bit load (X register)
-     * Offset is scaled by access size and must fit in 12 bits after scaling
-     */
-    
+    /* size == 1: 64-bit load into X register (offset scaled by 8)
+       size == 0: 32-bit load into W register (offset scaled by 4) */
     if (size == 1) {
-        /* 64-bit load: offset must be 8-byte aligned, divided by 8 */
-        if ((offset & 7) == 0 && (offset >> 3) <= 0xfff) {
-            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(3, dst, base, offset >> 3));
+        /* 64-bit: require 8-byte alignment for immediate form */
+        if ((offset & 7u) == 0 && (offset >> 3) <= 0x0fffu) {
+            arm64_emit_instruction(p, ARM64_LDR_X_UOFF(dst, base, offset >> 3));
         } else {
-            /* For unaligned or large offsets, add offset to base first */
-            /* This is a simplification - production code might handle this better */
-            arm64_emit_add_imm(p, 1, dst, base, offset & 0xfff);
-            if (offset > 0xfff) {
-                /* Handle large offsets with multiple adds */
-                arm64_emit_add_imm(p, 1, dst, dst, (offset >> 12) << 12);
+            /* Fallback: materialize address in dst and load with imm #0 */
+            /* add xdst, base, #lo12 */
+            arm64_emit_add_imm(p, 1, dst, base, (offset & 0xfffu));
+            uint32_t hi = offset & ~0xfffu;
+            if (hi) {
+                /* Add remaining high part in 4KB chunks */
+                for (uint32_t rem = hi; rem; rem -= (rem > 0xfffu ? 0xfffu : rem)) {
+                    uint32_t chunk = rem > 0xfffu ? 0xfffu : rem;
+                    arm64_emit_add_imm(p, 1, dst, dst, chunk);
+                }
             }
-            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(3, dst, dst, 0));
+            arm64_emit_instruction(p, ARM64_LDR_X_UOFF(dst, dst, 0));
         }
     } else {
-        /* 32-bit load: offset must be 4-byte aligned, divided by 4 */
-        if ((offset & 3) == 0 && (offset >> 2) <= 0xfff) {
-            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(2, dst, base, offset >> 2));
+        /* 32-bit: require 4-byte alignment for immediate form */
+        if ((offset & 3u) == 0 && (offset >> 2) <= 0x0fffu) {
+            arm64_emit_instruction(p, ARM64_LDR_W_UOFF(dst, base, offset >> 2));
         } else {
-            /* For unaligned or large offsets, add offset to base first */
-            arm64_emit_add_imm(p, 0, dst, base, offset & 0xfff);
-            if (offset > 0xfff) {
-                arm64_emit_add_imm(p, 0, dst, dst, (offset >> 12) << 12);
+            arm64_emit_add_imm(p, 1, dst, base, (offset & 0xfffu));
+            uint32_t hi = offset & ~0xfffu;
+            if (hi) {
+                for (uint32_t rem = hi; rem; rem -= (rem > 0xfffu ? 0xfffu : rem)) {
+                    uint32_t chunk = rem > 0xfffu ? 0xfffu : rem;
+                    arm64_emit_add_imm(p, 1, dst, dst, chunk);
+                }
             }
-            arm64_emit_instruction(p, ARM64_LDR_IMM_ENCODE(2, dst, dst, 0));
+            arm64_emit_instruction(p, ARM64_LDR_W_UOFF(dst, dst, 0));
         }
     }
 }

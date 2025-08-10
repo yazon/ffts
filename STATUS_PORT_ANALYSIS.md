@@ -103,3 +103,63 @@ Checklist
   - [ ] Fix base-case call-site mapping (x0 ← x1 before, x0 ← x2 after)
   - [ ] Re-test N=8/16 → L2 error small
   - [ ] Re-test N>=32 → no SIGILL/SEGV 
+
+- Test results after x0 remap fix (QEMU max):
+  - Direct N=8 output (sign=-1) now shows structured values, not all-ones error; full L2 check suppressed by segfault later in sweep. Single-size run prints sensible spectrum values, indicating base-case is reading input correctly.
+  - Direct N=16 output (sign=-1) shows varied non-pathological values, consistent with corrected input base usage. Need L2 computation path without sweeping to 32.
+  - Running the full sweep still segfaults (likely at N=32). Next, limit tests to 2/4/8/16 for L2 reporting or add a size-filter test harness.
+
+- Next actions (short-term):
+  1) Add a minimal test mode to `tests/test` to run only specified sizes (e.g., env var or CLI flag) to get L2 errors for 2,4,8,16 without reaching 32.
+  2) Investigate N=32 segfault by instrumenting first leaf entry (dump x3..x10, x12-derived addresses, and check δk scaling). 
+
+#### 2025-08-09 (cont. 3)
+- Targeted N=8/N=16 correctness work
+  - Added focused test modes to `tests/test`:
+    - `--l2 <N> <sign>` prints L2 error for a single size/sign without sweeping.
+    - `--l2-inplace <N> <sign>` runs in-place to isolate IO effects.
+  - ARM32 baseline via `build_arm32.sh` + `qemu-arm`:
+    - N=8, sign=-1 → L2 = 1.210162E-08 (good)
+  - ARM64 current behavior:
+    - N=4, sign=-1 → L2 ≈ 1.145552E-16 (good)
+    - N=8, sign=-1 → L2 = 1.000000E+00 (still wrong)
+    - Full sweep still segfaults at N≈32 (unchanged for now)
+
+- Changes implemented in ARM64 JIT path (base-case stage):
+  - Base-case calling convention
+    - Remap `x0` to the input stream for `x4/x8/x8_t` calls; restore `x0` afterwards for leaves (output base).
+    - Preserve input base and current input in `x21/x22`; when applying `pps` offset between stages, advance both `x0` (out) and `x22` (current in) to keep remap correct.
+  - Twiddle/LUT handling for base-cases
+    - Keep `x2` as ws base plus stage offset in bytes using `p->ws_is[]` (mirrors ARM32). Blobs use `x12` internally as an advancing pointer (`ld1 ... [x12], #32`).
+    - Confirmed `x1` holds stride in bytes as `N << 3` (8 bytes per complex float); the blob loop count is `(x1 / 32)` as expected.
+  - Sign patching scope
+    - Restrict runtime FP bit toggling to the inlined `x8_t` range only: copy [neon64_x8_t .. neon64_ee) and toggle there for inverse. Base `x8` remains unpatched. Leaf kernels patching is currently disabled pending parity verification.
+  - Prologue parity note
+    - `x0 = out`, `x19 = plan`, `x12 = plan->offsets`; `x3..x10` derived from `x1` (input) are for leaves, not used by base-case blobs which recompute from `x0`.
+
+- Hypothesis and focus
+  - With calling convention and stage pointer math corrected, the remaining N=8 error likely stems from LUT/sign parity at the base-case stage (x8/x8_t) on ARM64.
+  - Next: verify that the generated `p->ws` contents (forward/inverse) match what the AArch64 blobs expect for the first base stage, and that only `x8_t` needs runtime flips for inverse.
+
+- Next actions (immediate)
+  1) LUT parity audit: Cross-check `ffts_generate_luts` outputs (p->ws and p->ws_is) vs the load sequence in `neon64_x8`/`neon64_x8_t` (two `ld1 {v2.4s,v3.4s}, [x12], #32` per iteration). Ensure forward/inverse variants match ARM32 behavior exactly at N=8 and N=16.
+  2) Instruction-level verification: Confirm our FP sign toggle matches A64 encodings for FADD/FSUB and FMLA/FMLS (bit 23) and is applied only within the `x8_t` copied range. Reference: Arm ARM A64 SIMD&FP encodings [Arm ARM (DDI0600)](https://developer.arm.com/documentation/ddi0600/latest/).
+  3) Instrumentation: Temporarily dump the first few words of the twiddle vectors loaded into `v2/v3` in the first base-case iteration, and the first few outputs, to compare against ARM32 for N=8.
+  4) Re-run `tests/test --l2 8 -1` and `--l2 16 -1` under QEMU and record L2.
+
+- Checklist updates
+  - [x] Add focused L2 test modes to `tests/test`
+  - [x] Base-case x0 remap (use input for x4/x8/x8_t; restore after)
+  - [x] Advance both out (x0) and current in (x22) with `pps` offset
+  - [x] Keep x1 = N<<3 stride; x2 = ws base + stage offset (bytes)
+  - [x] Restrict sign patching to `x8_t` copied range only
+  - [ ] Verify LUT/sign parity for base-case (x8/x8_t) against ARM32
+  - [ ] Instrument and compare first iteration twiddles/results (N=8)
+  - [ ] Re-test N=8/16 → L2 small
+  - [ ] Fix N≥32 segfault after base-case parity is achieved 
+
+#### 2025-08-10
+- Added targeted debug modes in `tests/test` for ARM32/ARM64 parity:
+  - `--dump-ws <N> <sign> <stage>` to inspect WS/LUT contents by stage
+  - `--base8 <stride_floats> <sign>` to call raw base-case x8 once on synthetic inputs
+- Plan: Run on ARM32 vs ARM64 with identical inputs to isolate divergence within x8/x8_t. 

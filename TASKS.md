@@ -97,10 +97,15 @@ Fix excessive L2 error for N=8 and N=16 on ARM64 by auditing base-case code path
 ### Completed Tasks
 - [x] Corrected sign-dependent patch bit for AArch64: use 0x00800000 (bit 23) in `src/arch/arm64/codegen_arm64_macros.h`.
 - [x] Diagnosed N=8/16 mismatch root cause: base-case blobs called with `x0 = out` instead of `x0 = input`.
+- [x] Added focused test modes in `tests/test`:
+  - `--l2 <N> <sign>` and `--l2-inplace <N> <sign>`
+  - `--dump-ws <N> <sign> <stage>` to inspect LUTs
+  - `--base8 <stride_floats> <sign>` to directly exercise base-case x8
 
 ### In Progress Tasks
 - [ ] Wrap base-case invocations with register remap: `mov x0, x1` before x8/x8_t, restore `mov x0, x2` after.
 - [ ] Re-test N=8 and N=16 (forward/inverse) and capture L2 errors.
+- [ ] Compare `--base8` outputs between ARM32 and ARM64 for identical inputs and twiddles.
 
 ### Future Tasks
 - [ ] Only if needed: fine-tune sign-patching indices for leaf kernels beyond generic FP toggle.
@@ -110,12 +115,13 @@ Fix excessive L2 error for N=8 and N=16 on ARM64 by auditing base-case code path
   - Before calling/copying `neon64_x8`/`neon64_x8_t`, emit `ARM64_MOV_X(..., X0, X1)`.
   - After returning (or after inlined blob), emit `ARM64_MOV_X(..., X0, X2)` to restore `x0 = out` for leaf kernels.
   - Keep `x1` as byte stride (N << 3) and avoid relying on prologue `x3..x10` inside base-cases.
-- Rebuild and run `tests/test` under QEMU with N=8/16; compare to ARM32 baseline.
+- Rebuild and run `tests/test` under QEMU with N=8/16; compare to ARM32 baseline using the new modes.
 
 ### Relevant Files
 - `src/codegen.c` – Base-case emission and calls.
 - `src/arch/arm64/arm64-codegen.c` – Base-case copy ranges and patching.
 - `src/arch/arm64/codegen_arm64_macros.h` – Sign patch helpers.
+- `tests/test.c` – New debug CLI.
 
 ### Acceptance Criteria
 - N=8 and N=16 relative L2 error ~1e-8 (comparable to ARM32).

@@ -34,6 +34,8 @@ static inline void arm64_patch_fp_toggle(uint32_t *blob, size_t size_words, int 
 {
 #ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
     if (sign >= 0) return;
+    const char *dbg = getenv("FFTS_DEBUG_PATCH");
+    size_t toggled = 0;
     for (size_t i = 0; i < size_words; ++i) {
         uint32_t w = blob[i];
         /* Match vector FADD/FSUB (0x0e20/0x0ea0 .. with op=0xd4 in bits 15..10) */
@@ -41,6 +43,7 @@ static inline void arm64_patch_fp_toggle(uint32_t *blob, size_t size_words, int 
              ( (w & 0x0000FC00u) == (0xD4u << 10) ) ) {
             /* Toggle bit 23 to swap FADD<->FSUB */
             blob[i] ^= 0x00800000u;
+            ++toggled;
             continue;
         }
         /* Match vector FMLA/FMLS (0x0e20/0x0ea0 .. with op=0xCC in bits 15..10) */
@@ -48,8 +51,12 @@ static inline void arm64_patch_fp_toggle(uint32_t *blob, size_t size_words, int 
              ( (w & 0x0000FC00u) == (0xCCu << 10) ) ) {
             /* Toggle bit 23 to swap FMLA<->FMLS */
             blob[i] ^= 0x00800000u;
+            ++toggled;
             continue;
         }
+    }
+    if (dbg) {
+        fprintf(stderr, "[ARM64][patch_fp_toggle] toggled=%zu words at %p (size_words=%zu)\n", toggled, (void*)blob, size_words);
     }
 #else
     (void)blob; (void)size_words; (void)sign;
@@ -61,6 +68,8 @@ static inline void arm64_patch_neon64_x8_t(uint32_t *blob, int sign)
 #ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
     /* Match ARM32 behavior: toggle for forward FFT (sign < 0) */
     if (sign >= 0) return;
+    const char *disable = getenv("FFTS_ARM64_DISABLE_X8T_PATCH");
+    if (disable && disable[0] != '\0') return;
     extern const uint8_t neon64_x8_t[];
     extern const uint8_t neon64_ee[];
     size_t size_words = (size_t)(neon64_ee - neon64_x8_t) / sizeof(uint32_t);

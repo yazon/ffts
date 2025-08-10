@@ -773,6 +773,17 @@ ffts_small_backward4_64f(ffts_plan_t *p, const void *in, void *out)
     dout[7] = t5[1] - t7[0];
 }
 
+static void ffts_debug_print_vec4(const char *label, V4SF v)
+{
+#ifdef HAVE_STDIO_H
+    float tmp[4];
+    V4SF_ST(tmp, v);
+    fprintf(stderr, "%s: % .9E % .9E % .9E % .9E\n", label, tmp[0], tmp[1], tmp[2], tmp[3]);
+#else
+    (void)label; (void)v;
+#endif
+}
+
 void
 ffts_small_forward8_32f(ffts_plan_t *p, const void *in, void *out)
 {
@@ -785,7 +796,23 @@ ffts_small_forward8_32f(ffts_plan_t *p, const void *in, void *out)
     (void) p;
 
     V4SF_L_4_2(0, din, din+8, din+4, din+12, &r0_1, &r2_3, &r4_5, &r6_7);
+#ifdef __aarch64__
+    if (getenv("FFTS_DEBUG_SMALL8")) {
+        ffts_debug_print_vec4("[A64] L_4_2 r0_1", r0_1);
+        ffts_debug_print_vec4("[A64] L_4_2 r2_3", r2_3);
+        ffts_debug_print_vec4("[A64] L_4_2 r4_5", r4_5);
+        ffts_debug_print_vec4("[A64] L_4_2 r6_7", r6_7);
+    }
+#endif
     V4SF_K_N(0, V4SF_LD(lut), V4SF_LD(lut + 4), &r0_1, &r2_3, &r4_5, &r6_7);
+#ifdef __aarch64__
+    if (getenv("FFTS_DEBUG_SMALL8")) {
+        ffts_debug_print_vec4("[A64] K_N r0_1", r0_1);
+        ffts_debug_print_vec4("[A64] K_N r2_3", r2_3);
+        ffts_debug_print_vec4("[A64] K_N r4_5", r4_5);
+        ffts_debug_print_vec4("[A64] K_N r6_7", r6_7);
+    }
+#endif
     V4SF_S_4(r0_1, r2_3, r4_5, r6_7, dout+0, dout+4, dout+8, dout+12);
 }
 

@@ -15,3 +15,9 @@
 - ARM64: Tightened size-8 base-case copy range to [neon64_x8 .. neon64_x8_t) and bounded sign patching to blob range.
 - ARM64: Refactored sign-patching to a pattern-based toggle for AdvSIMD FP add/sub and mla/mls (bit 23), avoiding corruption outside blob bounds.
 - ARM64: Added optional debug envs `FFTS_DEBUG_PATCH` and `FFTS_DEBUG_JIT` to trace patching and dump JIT words. 
+
+## 2025-08-10
+- Tests: add focused N=8 debug mode to `tests/test` via `--dump-n8 <sign>`
+- Scripts: add `scripts/run_arm32_tests.sh`, `scripts/run_arm64_tests.sh` to build and run minimal N=8 tests under QEMU
+- Scripts: add `scripts/compare_n8.sh` to diff `p->ws` and output slices for ARM32 vs ARM64
+- ARM64: tweak `arm64_patch_neon64_x8_t` polarity helper (will replace with precise indices); N=8 still mismatches (L2=1.0) indicating sign-toggle scope/indices likely differ from ARM32 

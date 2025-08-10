@@ -35,21 +35,21 @@ static inline void arm64_patch_fp_toggle(uint32_t *blob, size_t size_words, int 
 #ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
     if (sign >= 0) return;
     const char *dbg = getenv("FFTS_DEBUG_PATCH");
+    const char *only_add = getenv("FFTS_ARM64_TOGGLE_ONLY_ADD");
     size_t toggled = 0;
     for (size_t i = 0; i < size_words; ++i) {
         uint32_t w = blob[i];
         /* Match vector FADD/FSUB (0x0e20/0x0ea0 .. with op=0xd4 in bits 15..10) */
         if ( ( (w & 0xFF000000u) == 0x0E000000u ) && /* AdvSIMD FP data */
              ( (w & 0x0000FC00u) == (0xD4u << 10) ) ) {
-            /* Toggle bit 23 to swap FADD<->FSUB */
             blob[i] ^= 0x00800000u;
             ++toggled;
             continue;
         }
         /* Match vector FMLA/FMLS (0x0e20/0x0ea0 .. with op=0xCC in bits 15..10) */
-        if ( ( (w & 0xFF000000u) == 0x0E000000u ) &&
-             ( (w & 0x0000FC00u) == (0xCCu << 10) ) ) {
-            /* Toggle bit 23 to swap FMLA<->FMLS */
+        if (!(only_add && only_add[0] != '\0') &&
+            ( ( (w & 0xFF000000u) == 0x0E000000u ) &&
+              ( (w & 0x0000FC00u) == (0xCCu << 10) ) ) ) {
             blob[i] ^= 0x00800000u;
             ++toggled;
             continue;

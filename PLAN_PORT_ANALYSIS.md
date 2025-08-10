@@ -126,6 +126,23 @@ F) Focused path for N=8/N=16 (PRIORITY)
 - Validate that x1 stride is in bytes and that x0/x1 bases map to out/in respectively across x8/x4 base-case calls.
 - Acceptance: N=8 and N=16 produce low L2 error comparable to ARM32 before proceeding to N>=32.
 
+### G) N=8/N=16 Base-case Parity (Immediate)
+- Problem: ARM64 base-case stage (x8/x8_t) yields L2=1.0 at N=8, while ARM32 is ~1e-8. Prologue and pointer setup are aligned; remaining discrepancy likely in LUT/sign parity at base-case.
+- Actions:
+  - Calling convention: Wrap base-case calls/inlines with `x0 ← input`/restore to ensure `neon64_x8`/`neon64_x8_t` recompute stream pointers from the input base.
+  - Twiddles/LUT: Ensure `x2 = ws base + stage offset (bytes)` per `p->ws_is[]`. The base-case blobs use `x12` internally with `ld1 ... [x12], #32` twice per iteration; confirm ws layout matches this.
+  - Sign handling: Apply FP add/sub and mla/mls toggling (bit 23) only within the [neon64_x8_t .. neon64_ee) copied range for inverse. Base `x8` remains unpatched.
+  - Testing: Use `tests/test --l2 8 -1` and `--l2 16 -1` to validate progress without sweeping into N=32.
+  - Reference encodings: Validate A64 FADD/FSUB/FMLA/FMLS encodings and toggle bit per Arm ARM A64 SIMD&FP data-processing ops [Arm ARM (DDI0600)](https://developer.arm.com/documentation/ddi0600/latest/).
+- Done:
+  - Implemented x0 remap around base-cases; preserved input base/current input in `x21/x22` and advanced with `pps` offsets.
+  - Scoped sign patching to x8_t only; base x8 unpatched; leaves temporarily unpatched pending parity.
+  - Added focused L2 test modes to `tests/test`.
+- Next:
+  - Verify `p->ws` contents and `p->ws_is` offsets match x8/x8_t load pattern for forward/inverse.
+  - Instrument first iteration to compare twiddles (v2/v3) and outputs against ARM32.
+  - Expectation: N=8,16 L2 → ~1e-8 after LUT/sign parity fix.
+
 ---
 
 ## Phase 3: Validation & Review

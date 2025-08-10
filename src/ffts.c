@@ -297,37 +297,13 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
                 temp0.val[1] = V4SF_XOR(temp0.val[1], neg);
                 V4SF2_STORE_SPR(fw + j*2, temp0);
             }
-            w += n/4;
 #else
             for (j = 0; j < n/4; j++) {
                 fw[j*2+0] = fw0[j*2+0];
                 fw[j*2+1] = (sign < 0) ? fw0[j*2+1] : -fw0[j*2+1];
             }
-            w += n/4;
 #endif
-#elif defined(__aarch64__)
-            // Pack as 8-float blocks: {re0,re1,re2,re3, im0,im1,im2,im3}
-            size_t idx = 0; // index in floats from fw base
-            for (j = 0; j < (int)(n/4); j += 4) {
-                // Reals
-                fw[idx + 0] = fw0[(j+0)*2 + 0];
-                fw[idx + 1] = fw0[(j+1)*2 + 0];
-                fw[idx + 2] = fw0[(j+2)*2 + 0];
-                fw[idx + 3] = fw0[(j+3)*2 + 0];
-                // Imaginaries (apply sign convention like ARM32 NEON path)
-                float im0 = fw0[(j+0)*2 + 1];
-                float im1 = fw0[(j+1)*2 + 1];
-                float im2 = fw0[(j+2)*2 + 1];
-                float im3 = fw0[(j+3)*2 + 1];
-                if (sign >= 0) { im0 = -im0; im1 = -im1; im2 = -im2; im3 = -im3; }
-                fw[idx + 4] = im0;
-                fw[idx + 5] = im1;
-                fw[idx + 6] = im2;
-                fw[idx + 7] = im3;
-                idx += 8;
-            }
-            // Advance w by the number of complex entries written
-            w = (ffts_cpx_32f*)((float*)w + idx);
+            w += n/4;
 #else
             for (j = 0; j < n/4; j += 2) {
                 V4SF re, im, temp0;
@@ -382,7 +358,6 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
                 temp2.val[1] = V4SF_XOR(temp2.val[1], neg);
                 V4SF2_STORE_SPR(fw + j*2*3 + 16, temp2);
             }
-            w += n/8 * 3;
 #else
             for (j = 0; j < n/8; j++) {
                 fw[j*6+0] = fw0[j*2+0];
@@ -392,50 +367,8 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
                 fw[j*6+4] = fw2[j*2+0];
                 fw[j*6+5] = (sign < 0) ? fw2[j*2+1] : -fw2[j*2+1];
             }
-            w += n/8 * 3;
 #endif
-#elif defined(__aarch64__)
-            // Pack three tables consecutively, each as {re0..re3, im0..im3} blocks
-            size_t idx = 0;
-            for (j = 0; j < (int)(n/8); j += 4) {
-                // w0
-                fw[idx + 0] = fw0[(j+0)*2 + 0];
-                fw[idx + 1] = fw0[(j+1)*2 + 0];
-                fw[idx + 2] = fw0[(j+2)*2 + 0];
-                fw[idx + 3] = fw0[(j+3)*2 + 0];
-                float im0 = fw0[(j+0)*2 + 1];
-                float im1 = fw0[(j+1)*2 + 1];
-                float im2 = fw0[(j+2)*2 + 1];
-                float im3 = fw0[(j+3)*2 + 1];
-                if (sign >= 0) { im0 = -im0; im1 = -im1; im2 = -im2; im3 = -im3; }
-                fw[idx + 4] = im0; fw[idx + 5] = im1; fw[idx + 6] = im2; fw[idx + 7] = im3;
-                idx += 8;
-                // w1
-                fw[idx + 0] = fw1[(j+0)*2 + 0];
-                fw[idx + 1] = fw1[(j+1)*2 + 0];
-                fw[idx + 2] = fw1[(j+2)*2 + 0];
-                fw[idx + 3] = fw1[(j+3)*2 + 0];
-                im0 = fw1[(j+0)*2 + 1];
-                im1 = fw1[(j+1)*2 + 1];
-                im2 = fw1[(j+2)*2 + 1];
-                im3 = fw1[(j+3)*2 + 1];
-                if (sign >= 0) { im0 = -im0; im1 = -im1; im2 = -im2; im3 = -im3; }
-                fw[idx + 4] = im0; fw[idx + 5] = im1; fw[idx + 6] = im2; fw[idx + 7] = im3;
-                idx += 8;
-                // w2
-                fw[idx + 0] = fw2[(j+0)*2 + 0];
-                fw[idx + 1] = fw2[(j+1)*2 + 0];
-                fw[idx + 2] = fw2[(j+2)*2 + 0];
-                fw[idx + 3] = fw2[(j+3)*2 + 0];
-                im0 = fw2[(j+0)*2 + 1];
-                im1 = fw2[(j+1)*2 + 1];
-                im2 = fw2[(j+2)*2 + 1];
-                im3 = fw2[(j+3)*2 + 1];
-                if (sign >= 0) { im0 = -im0; im1 = -im1; im2 = -im2; im3 = -im3; }
-                fw[idx + 4] = im0; fw[idx + 5] = im1; fw[idx + 6] = im2; fw[idx + 7] = im3;
-                idx += 8;
-            }
-            w = (ffts_cpx_32f*)((float*)w + idx);
+            w += n/8 * 3;
 #else
             for (j = 0; j < n/8; j += 2) {
                 V4SF temp0, temp1, temp2, re, im;

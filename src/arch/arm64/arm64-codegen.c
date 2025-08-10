@@ -219,7 +219,7 @@ arm64_generate_size8_base_case(arm64instr_t **p, int sign)
     uint32_t *dst = arm64_copy_blob((uint32_t**)p,
                                      neon64_x8,
                                      neon64_x8_t);
-    arm64_patch_neon64_x8_t(dst, sign); /* keep legacy sign flips aligned */
+    /* Do not patch the x8 base-case blob here. Sign flipping applies to the x8_t stage only. */
     return (arm64instr_t*)dst;
 }
 

@@ -97,15 +97,10 @@ Fix excessive L2 error for N=8 and N=16 on ARM64 by auditing base-case code path
 ### Completed Tasks
 - [x] Corrected sign-dependent patch bit for AArch64: use 0x00800000 (bit 23) in `src/arch/arm64/codegen_arm64_macros.h`.
 - [x] Diagnosed N=8/16 mismatch root cause: base-case blobs called with `x0 = out` instead of `x0 = input`.
-- [x] Added focused test modes in `tests/test`:
-  - `--l2 <N> <sign>` and `--l2-inplace <N> <sign>`
-  - `--dump-ws <N> <sign> <stage>` to inspect LUTs
-  - `--base8 <stride_floats> <sign>` to directly exercise base-case x8
 
 ### In Progress Tasks
 - [ ] Wrap base-case invocations with register remap: `mov x0, x1` before x8/x8_t, restore `mov x0, x2` after.
 - [ ] Re-test N=8 and N=16 (forward/inverse) and capture L2 errors.
-- [ ] Compare `--base8` outputs between ARM32 and ARM64 for identical inputs and twiddles.
 
 ### Future Tasks
 - [ ] Only if needed: fine-tune sign-patching indices for leaf kernels beyond generic FP toggle.
@@ -115,14 +110,40 @@ Fix excessive L2 error for N=8 and N=16 on ARM64 by auditing base-case code path
   - Before calling/copying `neon64_x8`/`neon64_x8_t`, emit `ARM64_MOV_X(..., X0, X1)`.
   - After returning (or after inlined blob), emit `ARM64_MOV_X(..., X0, X2)` to restore `x0 = out` for leaf kernels.
   - Keep `x1` as byte stride (N << 3) and avoid relying on prologue `x3..x10` inside base-cases.
-- Rebuild and run `tests/test` under QEMU with N=8/16; compare to ARM32 baseline using the new modes.
+- Rebuild and run `tests/test` under QEMU with N=8/16; compare to ARM32 baseline.
 
 ### Relevant Files
 - `src/codegen.c` – Base-case emission and calls.
 - `src/arch/arm64/arm64-codegen.c` – Base-case copy ranges and patching.
 - `src/arch/arm64/codegen_arm64_macros.h` – Sign patch helpers.
-- `tests/test.c` – New debug CLI.
 
 ### Acceptance Criteria
 - N=8 and N=16 relative L2 error ~1e-8 (comparable to ARM32).
 - No regressions for N=2,4. 
+
+### [ARM32 vs ARM64 N=8 Investigation]
+
+Brief description: Step-by-step parity check of N=8 base-case behavior between ARM32 (`neon_x8`/`neon_x8_t`) and ARM64 (`neon64_x8`/`neon64_x8_t`), with minimal runners.
+
+### Completed Tasks
+- [x] Added `--dump-n8 <sign>` mode to `tests/test` to print `p->ws` slice, inputs, outputs, and L2 error for N=8
+- [x] Added scripts `scripts/run_arm32_tests.sh` and `scripts/run_arm64_tests.sh` to build and run N=8 minimal tests under QEMU
+
+### In Progress Tasks
+- [ ] Instruction-by-instruction audit of add/sub and fmla/fmls usage in `neon64_x8_t` vs `neon_x8_t`; confirm runtime sign toggle coverage
+- [ ] Compare first-iteration twiddle vectors loaded into `v2/v3` vs ARM32 `q2/q3`
+- [ ] Validate loop counter formula: iterations = (x1 >> 5) parity with (r1 >> 5)
+
+### Future Tasks
+- [ ] Add a mode to dump first few twiddle words from inside JIT (if needed via instrumentation callbacks)
+
+### Implementation Plan
+- Use the new dump mode to capture ARM32 vs ARM64 twiddles and outputs, then align patching if mismatches persist
+
+### Relevant Files
+- `tests/test.c` – `--dump-n8`
+- `scripts/run_arm32_tests.sh`, `scripts/run_arm64_tests.sh`
+- `src/neon64.s`, `src/neon.s`
+
+### Acceptance Criteria
+- N=8 forward and inverse show L2 error ~1e-8 on ARM64, matching ARM32 

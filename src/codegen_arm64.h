@@ -118,6 +118,10 @@ generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
     /* Preserve plan pointer in x19 for field loads */
     ARM64_MOV_X(p, ARM64_X19, ARM64_X0);   /* x19 = plan */
 
+    /* Preserve input base pointer in x21 and initialize current input pointer in x22 */
+    ARM64_MOV_X(p, ARM64_X21, ARM64_X1);  /* x21 = in (base) */
+    ARM64_MOV_X(p, ARM64_X22, ARM64_X1);  /* x22 = current in pointer */
+
     /* Establish calling-convention registers expected by kernels */
     /* x0 = out (move from entry x2) */
     ARM64_MOV_X(p, ARM64_X0, ARM64_X2);

@@ -59,9 +59,10 @@ static inline void arm64_patch_fp_toggle(uint32_t *blob, size_t size_words, int 
 static inline void arm64_patch_neon64_x8_t(uint32_t *blob, int sign)
 {
 #ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
-    extern const uint8_t neon64_x8[];
+    if (sign >= 0) return;
     extern const uint8_t neon64_x8_t[];
-    size_t size_words = (size_t)(neon64_x8_t - neon64_x8) / sizeof(uint32_t);
+    extern const uint8_t neon64_ee[];
+    size_t size_words = (size_t)(neon64_ee - neon64_x8_t) / sizeof(uint32_t);
     arm64_patch_fp_toggle(blob, size_words, sign);
 #else
     (void)blob; (void)sign;
@@ -91,50 +92,22 @@ static inline void arm64_patch_indices(uint32_t *blob, const int *indices, size_
 
 static inline void arm64_patch_neon64_ee(uint32_t *blob, int sign)
 {
-#ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
-    extern const uint8_t neon64_ee[];
-    extern const uint8_t neon64_oo[];
-    size_t size_words = (size_t)(neon64_oo - neon64_ee) / sizeof(uint32_t);
-    arm64_patch_fp_toggle(blob, size_words, sign);
-#else
     (void)blob; (void)sign;
-#endif
 }
 
 static inline void arm64_patch_neon64_oo(uint32_t *blob, int sign)
 {
-#ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
-    extern const uint8_t neon64_oo[];
-    extern const uint8_t neon64_eo[];
-    size_t size_words = (size_t)(neon64_eo - neon64_oo) / sizeof(uint32_t);
-    arm64_patch_fp_toggle(blob, size_words, sign);
-#else
     (void)blob; (void)sign;
-#endif
 }
 
 static inline void arm64_patch_neon64_eo(uint32_t *blob, int sign)
 {
-#ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
-    extern const uint8_t neon64_eo[];
-    extern const uint8_t neon64_oe[];
-    size_t size_words = (size_t)(neon64_oe - neon64_eo) / sizeof(uint32_t);
-    arm64_patch_fp_toggle(blob, size_words, sign);
-#else
     (void)blob; (void)sign;
-#endif
 }
 
 static inline void arm64_patch_neon64_oe(uint32_t *blob, int sign)
 {
-#ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
-    extern const uint8_t neon64_oe[];
-    extern const uint8_t neon64_end[];
-    size_t size_words = (size_t)(neon64_end - neon64_oe) / sizeof(uint32_t);
-    arm64_patch_fp_toggle(blob, size_words, sign);
-#else
     (void)blob; (void)sign;
-#endif
 }
 
 #endif /* FFTS_CODEGEN_ARM64_MACROS_H */ 

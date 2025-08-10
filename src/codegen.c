@@ -212,8 +212,8 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     /* ARM64 code generation path */
     start = (insns_t*)generate_prologue_arm64((ffts_insn_t**)&fp, p);
 
-    /* Ensure X1 holds p->ws base for base cases and leaves that adjust from it */
-    ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X1, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws));
+    /* Ensure X2 holds p->ws base (twiddle base), X1 will be used for stride bytes per base-case */
+    ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws));
 
     loop_count = 4 * p->i0;
     /* ee/oo leaves use x11 as loop counter */
@@ -307,8 +307,9 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         } else {
             int offset = (4 * pps[1]) - pAddr;
             if (offset) {
-                /* Add offset to data pointer */
+                /* Add offset to output and input data pointers */
                 ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X0, offset);
+                ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X22, ARM64_X22, offset);
             }
 
             if (pps[0] > leaf_N && pps[0] - pN) {
@@ -324,17 +325,19 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         }
 
         ws_is = 8 * p->ws_is[ffts_ctzl(pps[0] / leaf_N) - 1];
-        if (ws_is != pLUT) {
-            int offset = (int) (ws_is - pLUT);
-            /* Adjust twiddle pointer in X2 (base cases read twiddles from x2) */
-            ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X2, offset);
+        /* Reset twiddle base to plan->ws before each base-case stage */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws));
+        if (ws_is) {
+            /* Apply stage offset (bytes) from ws base */
+            ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X2, (int)ws_is);
         }
 
         if (pps[0] == 2 * leaf_N) {
             /* Call 4-point base case */
             /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
+            /* x2 already set to plan->ws + stage offset for base-case */
             ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
-            ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X1);
+            ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X22);
             arm64_emit_bl((ffts_insn_t**)&fp, (int32_t)(((ffts_insn_t*)x_4_addr - (ffts_insn_t*)fp - 1) * 4));
             /* Restore x0 to prior base (out/current destination base) */
             ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X20);
@@ -344,8 +347,9 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
                data re-/interleaving semantics; otherwise call the x8 subroutine. */
             if (!pps[2]) {
                 /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
+                /* x2 already set to plan->ws + stage offset for x8_t */
                 ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
-                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X1);
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X22);
                 extern const uint8_t neon64_x8_t[];
                 extern const uint8_t neon64_ee[];
                 uint32_t *dst = arm64_copy_blob((uint32_t**)&fp, neon64_x8_t, neon64_ee);
@@ -355,8 +359,9 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
             } else {
                 /* Call 8-point base case */
                 /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
+                /* x2 already set to plan->ws + stage offset for x8 */
                 ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
-                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X1);
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X22);
                 arm64_emit_bl((ffts_insn_t**)&fp, (int32_t)(((ffts_insn_t*)x_8_addr - (ffts_insn_t*)fp - 1) * 4));
                 /* Restore x0 to prior base (out/current destination base) */
                 ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X20);

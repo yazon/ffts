@@ -157,9 +157,3 @@ Checklist
   - [ ] Instrument and compare first iteration twiddles/results (N=8)
   - [ ] Re-test N=8/16 → L2 small
   - [ ] Fix N≥32 segfault after base-case parity is achieved 
-
-#### 2025-08-10
-- Added targeted debug modes in `tests/test` for ARM32/ARM64 parity:
-  - `--dump-ws <N> <sign> <stage>` to inspect WS/LUT contents by stage
-  - `--base8 <stride_floats> <sign>` to call raw base-case x8 once on synthetic inputs
-- Plan: Run on ARM32 vs ARM64 with identical inputs to isolate divergence within x8/x8_t. 

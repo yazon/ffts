@@ -59,7 +59,8 @@ static inline void arm64_patch_fp_toggle(uint32_t *blob, size_t size_words, int 
 static inline void arm64_patch_neon64_x8_t(uint32_t *blob, int sign)
 {
 #ifndef FFTS_ARM64_DISABLE_SIGN_PATCH
-    if (sign >= 0) return;
+    /* Toggle only for inverse (sign > 0). Forward (sign < 0) uses baseline */
+    if (sign <= 0) return;
     extern const uint8_t neon64_x8_t[];
     extern const uint8_t neon64_ee[];
     size_t size_words = (size_t)(neon64_ee - neon64_x8_t) / sizeof(uint32_t);

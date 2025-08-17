@@ -597,6 +597,571 @@ fft_leaf_done:
     ldp     x29, x30, [sp], #16
     ret
 
+// ============================================================================
+// ARM64 NEON EE/OE/EO/OO Leaf Functions
+// ============================================================================
+// These functions implement the core FFT butterfly operations for N=32
+// Using strict 2-lane (.2s) operations to match ARM32 behavior
+// 
+// Register allocation:
+// x0 = output pointer
+// x1 = twiddle pointer (for EO/OE)
+// x2 = temporary for address calculations
+// x3-x10 = data stream pointers
+// x11 = loop counter
+// x12 = offset array pointer
+// x13 = temporary
+// v0-v15 = data vectors (using .2s operations)
+// v16-v17 = twiddle factors
+
+// ============================================================================
+// neon64_ee - Even-Even butterfly operations
+// ============================================================================
+// Input parameters:
+// x0 = output buffer
+// x1 = input buffer (unused in this implementation)
+// x2 = twiddle factors pointer
+// x3-x10 = data stream pointers
+// x11 = loop iterations
+// x12 = offset array pointer
+
+    .align 4
+    .globl _neon64_ee
+_neon64_ee:
+    .globl neon64_ee
+neon64_ee:
+    // Load twiddle factors (constant for all iterations)
+    ld1 {v16.2s, v17.2s}, [x2]      // Load twiddle factors
+
+.Lneon64_ee_loop:
+    // Load 2 complex numbers from each stream using .2s
+    ld2 {v30.2s, v31.2s}, [x10], #16   // Stream 7
+    ld2 {v26.2s, v27.2s}, [x8], #16    // Stream 6
+    ld2 {v28.2s, v29.2s}, [x7], #16    // Stream 5
+    ld2 {v18.2s, v19.2s}, [x4], #16    // Stream 2
+    ld2 {v20.2s, v21.2s}, [x3], #16    // Stream 1
+    ld2 {v22.2s, v23.2s}, [x6], #16    // Stream 4
+    ld2 {v24.2s, v25.2s}, [x5], #16    // Stream 3
+    ld2 {v0.2s, v1.2s}, [x9], #16      // Stream 0
+
+    subs x11, x11, #1                   // Decrement loop counter
+
+    // First set of butterflies
+    fsub v2.2s, v28.2s, v26.2s         // q1 = q14 - q13
+    fsub v3.2s, v29.2s, v27.2s
+    fsub v4.2s, v0.2s, v30.2s          // q2 = q0 - q15
+    fsub v5.2s, v1.2s, v31.2s
+    fadd v0.2s, v0.2s, v30.2s          // q0 = q0 + q15
+    fadd v1.2s, v1.2s, v31.2s
+
+    // Complex multiplication for first butterfly result
+    fmul v10.2s, v2.2s, v17.2s         // d10 = d2 * d17
+    fmul v11.2s, v3.2s, v16.2s         // d11 = d3 * d16
+    fmul v12.2s, v3.2s, v17.2s         // d12 = d3 * d17
+    fmul v6.2s, v4.2s, v17.2s          // d6 = d4 * d17
+    fmul v7.2s, v5.2s, v16.2s          // d7 = d5 * d16
+    fmul v8.2s, v4.2s, v16.2s          // d8 = d4 * d16
+    fmul v9.2s, v5.2s, v17.2s          // d9 = d5 * d17
+    fmul v13.2s, v2.2s, v16.2s         // d13 = d2 * d16
+
+    // Combine multiplication results
+    fsub v7.2s, v7.2s, v6.2s           // d7 = d7 - d6
+    fadd v11.2s, v11.2s, v10.2s        // d11 = d11 + d10
+    fsub v10.2s, v13.2s, v12.2s        // d10 = d13 - d12
+    fadd v6.2s, v9.2s, v8.2s           // d6 = d9 + d8
+
+    // Second set of butterflies
+    fsub v2.2s, v24.2s, v22.2s         // q1 = q12 - q11
+    fsub v3.2s, v25.2s, v23.2s
+    fsub v4.2s, v20.2s, v18.2s         // q2 = q10 - q9
+    fsub v5.2s, v21.2s, v19.2s
+    fadd v8.2s, v28.2s, v26.2s         // q4 = q14 + q13
+    fadd v9.2s, v29.2s, v27.2s
+    fadd v22.2s, v24.2s, v22.2s        // q11 = q12 + q11
+    fadd v23.2s, v25.2s, v23.2s
+    fadd v24.2s, v20.2s, v18.2s        // q12 = q10 + q9
+    fadd v25.2s, v21.2s, v19.2s
+
+    // More butterfly operations
+    fsub v14.2s, v8.2s, v0.2s          // q7 = q4 - q0
+    fsub v15.2s, v9.2s, v1.2s
+    fsub v18.2s, v24.2s, v22.2s        // q9 = q12 - q11
+    fsub v19.2s, v25.2s, v23.2s
+    fsub v26.2s, v10.2s, v6.2s         // q13 = q5 - q3
+    fsub v27.2s, v11.2s, v7.2s
+
+    // Final additions
+    fadd v29.2s, v5.2s, v2.2s          // d29 = d5 + d2
+    fadd v10.2s, v10.2s, v6.2s         // q5 = q5 + q3
+    fadd v11.2s, v11.2s, v7.2s
+    fadd v20.2s, v8.2s, v0.2s          // q10 = q4 + q0
+    fadd v21.2s, v9.2s, v1.2s
+    fadd v22.2s, v24.2s, v22.2s        // q11 = q12 + q11
+    fadd v23.2s, v25.2s, v23.2s
+
+    // More combining operations
+    fsub v31.2s, v5.2s, v2.2s          // d31 = d5 - d2
+    fsub v28.2s, v4.2s, v3.2s          // d28 = d4 - d3
+    fadd v30.2s, v4.2s, v3.2s          // d30 = d4 + d3
+    fadd v5.2s, v19.2s, v14.2s         // d5 = d19 + d14
+    fadd v7.2s, v31.2s, v26.2s         // d7 = d31 + d26
+    fadd v2.2s, v28.2s, v10.2s         // q1 = q14 + q5
+    fadd v3.2s, v29.2s, v11.2s
+    fadd v0.2s, v22.2s, v20.2s         // q0 = q11 + q10
+    fadd v1.2s, v23.2s, v21.2s
+
+    // Final operations before store
+    fsub v6.2s, v30.2s, v27.2s         // d6 = d30 - d27
+    fsub v4.2s, v18.2s, v15.2s         // d4 = d18 - d15
+    fsub v13.2s, v19.2s, v14.2s        // d13 = d19 - d14
+    fadd v12.2s, v18.2s, v15.2s        // d12 = d18 + d15
+    fsub v15.2s, v31.2s, v26.2s        // d15 = d31 - d26
+
+    // Load offsets and calculate store addresses
+    ldr w2, [x12], #4                   // Load first offset
+    ldr w13, [x12], #4                  // Load second offset
+
+    // Transpose for correct storage format (2x2 transpose)
+    trn1 v8.2s, v2.2s, v6.2s           // First pair real parts
+    trn2 v9.2s, v2.2s, v6.2s           // First pair imag parts
+    trn1 v10.2s, v0.2s, v4.2s          // Second pair real parts
+    trn2 v11.2s, v0.2s, v4.2s          // Second pair imag parts
+
+    // Calculate store addresses
+    add x2, x0, x2, lsl #2              // First store address
+    add x13, x0, x13, lsl #2            // Second store address
+
+    // Final butterfly results
+    fsub v8.2s, v22.2s, v20.2s         // q4 = q11 - q10
+    fsub v9.2s, v23.2s, v21.2s
+    fsub v10.2s, v28.2s, v10.2s        // q5 = q14 - q5
+    fsub v11.2s, v29.2s, v11.2s
+    fadd v14.2s, v30.2s, v27.2s        // d14 = d30 + d27
+
+    // Store first set of results (2 complex numbers per store)
+    st2 {v0.2s, v1.2s}, [x2], #16      // Store 2 complex numbers
+    st2 {v4.2s, v5.2s}, [x13], #16     // Store 2 complex numbers
+
+    // Transpose remaining results
+    trn1 v0.2s, v8.2s, v12.2s          // Third pair real parts
+    trn2 v1.2s, v8.2s, v12.2s          // Third pair imag parts
+    trn1 v4.2s, v10.2s, v14.2s         // Fourth pair real parts
+    trn2 v5.2s, v10.2s, v14.2s         // Fourth pair imag parts
+
+    // Store second set of results
+    st2 {v0.2s, v1.2s}, [x2], #16      // Store 2 complex numbers
+    st2 {v4.2s, v5.2s}, [x13], #16     // Store 2 complex numbers
+
+    // Loop back if more iterations
+    b.ne .Lneon64_ee_loop
+
+    ret
+
+// ============================================================================
+// neon64_oo - Odd-Odd butterfly operations
+// ============================================================================
+    .align 4
+    .globl _neon64_oo
+_neon64_oo:
+    .globl neon64_oo
+neon64_oo:
+.Lneon64_oo_loop:
+    // Load 2 complex numbers from each stream
+    ld2 {v16.2s, v17.2s}, [x6], #16    // Stream 4
+    ld2 {v18.2s, v19.2s}, [x5], #16    // Stream 3
+    ld2 {v20.2s, v21.2s}, [x4], #16    // Stream 2
+    ld2 {v26.2s, v27.2s}, [x3], #16    // Stream 1
+
+    // First butterflies
+    fadd v22.2s, v18.2s, v16.2s        // q11 = q9 + q8
+    fadd v23.2s, v19.2s, v17.2s
+    fsub v16.2s, v18.2s, v16.2s        // q8 = q9 - q8
+    fsub v17.2s, v19.2s, v17.2s
+    fsub v18.2s, v26.2s, v20.2s        // q9 = q13 - q10
+    fsub v19.2s, v27.2s, v21.2s
+    fadd v24.2s, v26.2s, v20.2s        // q12 = q13 + q10
+    fadd v25.2s, v27.2s, v21.2s
+
+    subs x11, x11, #1                   // Decrement loop counter
+
+    // Load more data
+    ld2 {v20.2s, v21.2s}, [x7], #16    // Stream 5
+    ld2 {v26.2s, v27.2s}, [x9], #16    // Stream 7
+
+    // Complex operations
+    fsub v4.2s, v24.2s, v22.2s         // q2 = q12 - q11
+    fsub v5.2s, v25.2s, v23.2s
+    fsub v7.2s, v19.2s, v16.2s         // d7 = d19 - d16
+    fadd v3.2s, v19.2s, v16.2s         // d3 = d19 + d16
+    fadd v6.2s, v18.2s, v17.2s         // d6 = d18 + d17
+    fsub v2.2s, v18.2s, v17.2s         // d2 = d18 - d17
+
+    // Load remaining data
+    ld2 {v18.2s, v19.2s}, [x8], #16    // Stream 6
+    ld2 {v16.2s, v17.2s}, [x10], #16   // Stream 8
+
+    // More butterflies
+    fadd v0.2s, v24.2s, v22.2s         // q0 = q12 + q11
+    fadd v1.2s, v25.2s, v23.2s
+    fadd v22.2s, v26.2s, v16.2s        // q11 = q13 + q8
+    fadd v23.2s, v27.2s, v17.2s
+    fadd v24.2s, v20.2s, v18.2s        // q12 = q10 + q9
+    fadd v25.2s, v21.2s, v19.2s
+    fsub v16.2s, v26.2s, v16.2s        // q8 = q13 - q8
+    fsub v17.2s, v27.2s, v17.2s
+    fsub v18.2s, v20.2s, v18.2s        // q9 = q10 - q9
+    fsub v19.2s, v21.2s, v19.2s
+
+    // Final butterflies
+    fsub v12.2s, v24.2s, v22.2s        // q6 = q12 - q11
+    fsub v13.2s, v25.2s, v23.2s
+    fadd v8.2s, v24.2s, v22.2s         // q4 = q12 + q11
+    fadd v9.2s, v25.2s, v23.2s
+
+    // Transpose first results
+    trn1 v10.2s, v0.2s, v4.2s          // Real parts
+    trn2 v11.2s, v0.2s, v4.2s          // Imag parts
+
+    // Load offsets
+    ldr w2, [x12], #4
+    ldr w13, [x12], #4
+
+    // More operations
+    fsub v15.2s, v19.2s, v16.2s        // d15 = d19 - d16
+    fadd v11.2s, v19.2s, v16.2s        // d11 = d19 + d16
+    fadd v14.2s, v18.2s, v17.2s        // d14 = d18 + d17
+    fsub v10.2s, v18.2s, v17.2s        // d10 = d18 - d17
+
+    // Calculate addresses
+    add x2, x0, x2, lsl #2
+    add x13, x0, x13, lsl #2
+
+    // Transpose second set
+    trn1 v0.2s, v2.2s, v6.2s           // Real parts
+    trn2 v1.2s, v2.2s, v6.2s           // Imag parts
+
+    // Store first results
+    st2 {v10.2s, v11.2s}, [x2], #16
+    st2 {v0.2s, v1.2s}, [x13], #16
+
+    // Transpose remaining
+    trn1 v4.2s, v8.2s, v12.2s          // Real parts
+    trn2 v5.2s, v8.2s, v12.2s          // Imag parts
+    trn1 v6.2s, v10.2s, v14.2s         // Real parts
+    trn2 v7.2s, v10.2s, v14.2s         // Imag parts
+
+    // Store remaining results
+    st2 {v4.2s, v5.2s}, [x2], #16
+    st2 {v6.2s, v7.2s}, [x13], #16
+
+    b.ne .Lneon64_oo_loop
+
+    ret
+
+// ============================================================================
+// neon64_eo - Even-Odd butterfly operations with twiddle factors
+// ============================================================================
+    .align 4
+    .globl _neon64_eo
+_neon64_eo:
+    .globl neon64_eo
+neon64_eo:
+    // Initial loads
+    ld2 {v18.2s, v19.2s}, [x5], #16    // q9 from stream 3
+    ld2 {v26.2s, v27.2s}, [x3], #16    // q13 from stream 1
+    ld2 {v24.2s, v25.2s}, [x4], #16    // q12 from stream 2
+    ld2 {v0.2s, v1.2s}, [x7], #16      // q0 from stream 5
+
+    // First butterflies
+    fsub v22.2s, v26.2s, v24.2s        // q11 = q13 - q12
+    fsub v23.2s, v27.2s, v25.2s
+    ld2 {v16.2s, v17.2s}, [x6], #16    // q8 from stream 4
+    fadd v24.2s, v26.2s, v24.2s        // q12 = q13 + q12
+    fadd v25.2s, v27.2s, v25.2s
+    fsub v20.2s, v18.2s, v16.2s        // q10 = q9 - q8
+    fsub v21.2s, v19.2s, v17.2s
+    fadd v16.2s, v18.2s, v16.2s        // q8 = q9 + q8
+    fadd v17.2s, v19.2s, v17.2s
+
+    // More operations
+    fadd v18.2s, v24.2s, v16.2s        // q9 = q12 + q8
+    fadd v19.2s, v25.2s, v17.2s
+    fadd v9.2s, v23.2s, v20.2s         // d9 = d23 + d20
+    fsub v11.2s, v23.2s, v20.2s        // d11 = d23 - d20
+    fsub v16.2s, v24.2s, v16.2s        // q8 = q12 - q8
+    fsub v17.2s, v25.2s, v17.2s
+    fsub v8.2s, v22.2s, v21.2s         // d8 = d22 - d21
+    fadd v10.2s, v22.2s, v21.2s        // d10 = d22 + d21
+
+    // Load offset and twiddle
+    ldr w2, [x12], #4
+    ld1 {v20.2s, v21.2s}, [x11]        // Load twiddle factors
+    ldr w13, [x12], #4
+
+    // Transpose first results
+    trn1 v4.2s, v18.2s, v8.2s          // Real parts
+    trn2 v5.2s, v18.2s, v9.2s          // Imag parts
+
+    // Calculate addresses
+    add x2, x0, x2, lsl #2
+    trn1 v6.2s, v16.2s, v10.2s         // Real parts
+    trn2 v7.2s, v16.2s, v11.2s         // Imag parts
+    add x13, x0, x13, lsl #2
+
+    // Swap for correct order
+    mov v8.2s, v4.2s
+    mov v4.2s, v5.2s
+    mov v5.2s, v8.2s
+    mov v9.2s, v6.2s
+    mov v6.2s, v7.2s
+    mov v7.2s, v9.2s
+
+    // Store first set
+    st1 {v4.2s, v5.2s, v6.2s, v7.2s}, [x13], #64
+
+    // Load more data
+    ld2 {v26.2s, v27.2s}, [x10], #16   // q13 from stream 8
+    ld2 {v30.2s, v31.2s}, [x9], #16    // q15 from stream 7
+    ld2 {v22.2s, v23.2s}, [x8], #16    // q11 from stream 6
+
+    // More butterflies
+    fsub v28.2s, v30.2s, v26.2s        // q14 = q15 - q13
+    fsub v29.2s, v31.2s, v27.2s
+    fsub v24.2s, v0.2s, v22.2s         // q12 = q0 - q11
+    fsub v25.2s, v1.2s, v23.2s
+    fadd v22.2s, v0.2s, v22.2s         // q11 = q0 + q11
+    fadd v23.2s, v1.2s, v23.2s
+    fadd v26.2s, v30.2s, v26.2s        // q13 = q15 + q13
+    fadd v27.2s, v31.2s, v27.2s
+
+    // Final operations
+    fadd v13.2s, v29.2s, v24.2s        // d13 = d29 + d24
+    fadd v30.2s, v26.2s, v22.2s        // q15 = q13 + q11
+    fadd v31.2s, v27.2s, v23.2s
+    fsub v12.2s, v28.2s, v25.2s        // d12 = d28 - d25
+    fsub v15.2s, v29.2s, v24.2s        // d15 = d29 - d24
+    fadd v14.2s, v28.2s, v25.2s        // d14 = d28 + d25
+
+    // Transpose
+    trn1 v8.2s, v30.2s, v12.2s         // Real parts
+    trn2 v9.2s, v30.2s, v13.2s         // Imag parts
+    fsub v30.2s, v26.2s, v22.2s        // q15 = q13 - q11
+    fsub v31.2s, v27.2s, v23.2s
+    trn1 v10.2s, v30.2s, v14.2s        // Real parts
+    trn2 v11.2s, v30.2s, v15.2s        // Imag parts
+
+    // Swap for storage
+    mov v12.2s, v8.2s
+    mov v8.2s, v9.2s
+    mov v9.2s, v12.2s
+    mov v13.2s, v10.2s
+    mov v10.2s, v11.2s
+    mov v11.2s, v13.2s
+
+    // Store second set
+    st1 {v8.2s, v9.2s, v10.2s, v11.2s}, [x13], #64
+
+    // Apply twiddle factors
+    trn1 v26.2s, v26.2s, v28.2s        // q13 real parts
+    trn2 v27.2s, v26.2s, v28.2s        // q13 imag parts
+    trn1 v22.2s, v22.2s, v24.2s        // q11 real parts
+    trn2 v23.2s, v22.2s, v24.2s        // q11 imag parts
+
+    // Complex multiplication with twiddle
+    fmul v24.2s, v26.2s, v21.2s        // real * twiddle_imag
+    fmul v28.2s, v27.2s, v20.2s        // imag * twiddle_real
+    fmul v25.2s, v26.2s, v20.2s        // real * twiddle_real
+    fmul v26.2s, v27.2s, v21.2s        // imag * twiddle_imag
+    fmul v27.2s, v22.2s, v21.2s        // real * twiddle_imag
+    fmul v30.2s, v23.2s, v20.2s        // imag * twiddle_real
+    fmul v29.2s, v23.2s, v21.2s        // imag * twiddle_imag
+    fmul v22.2s, v22.2s, v20.2s        // real * twiddle_real
+
+    // Combine results
+    fsub v21.2s, v28.2s, v24.2s        // real result
+    fadd v20.2s, v26.2s, v25.2s        // imag result
+    fadd v25.2s, v30.2s, v27.2s        // real result
+    fsub v24.2s, v22.2s, v29.2s        // imag result
+
+    // Final butterflies
+    fadd v22.2s, v24.2s, v20.2s        // q11 = q12 + q10
+    fadd v23.2s, v25.2s, v21.2s
+    fsub v20.2s, v24.2s, v20.2s        // q10 = q12 - q10
+    fsub v21.2s, v25.2s, v21.2s
+
+    // Combine with previous results
+    fadd v0.2s, v18.2s, v22.2s         // q0 = q9 + q11
+    fadd v1.2s, v19.2s, v23.2s
+    fsub v4.2s, v18.2s, v22.2s         // q2 = q9 - q11
+    fsub v5.2s, v19.2s, v23.2s
+
+         // Final operations
+     fadd v3.2s, v17.2s, v20.2s         // d3 = d17 + d20
+     mov v2.2s, v16.2s                   // Save for later
+     
+     // Store final results
+     trn1 v6.2s, v0.2s, v4.2s           // Real parts
+     trn2 v7.2s, v0.2s, v4.2s           // Imag parts
+     trn1 v8.2s, v2.2s, v3.2s           // Real parts
+     trn2 v9.2s, v2.2s, v3.2s           // Imag parts
+     
+     st2 {v6.2s, v7.2s}, [x2], #16      // Store results
+     st2 {v8.2s, v9.2s}, [x2], #16      // Store results
+     
+     ret
+
+// ============================================================================
+// neon64_oe - Odd-Even butterfly operations with twiddle factors
+// ============================================================================
+    .align 4
+    .globl _neon64_oe
+_neon64_oe:
+    .globl neon64_oe
+neon64_oe:
+    // Initial loads
+    ld2 {v18.2s, v19.2s}, [x5], #16    // q9 from stream 3
+    ld2 {v26.2s, v27.2s}, [x3], #16    // q13 from stream 1
+    ld2 {v24.2s, v25.2s}, [x4], #16    // q12 from stream 2
+    ld2 {v0.2s, v1.2s}, [x7], #16      // q0 from stream 5
+
+    // First butterflies
+    fsub v22.2s, v26.2s, v24.2s        // q11 = q13 - q12
+    fsub v23.2s, v27.2s, v25.2s
+    ld2 {v16.2s, v17.2s}, [x6], #16    // q8 from stream 4
+    fadd v24.2s, v26.2s, v24.2s        // q12 = q13 + q12
+    fadd v25.2s, v27.2s, v25.2s
+    fsub v20.2s, v18.2s, v16.2s        // q10 = q9 - q8
+    fsub v21.2s, v19.2s, v17.2s
+    fadd v16.2s, v18.2s, v16.2s        // q8 = q9 + q8
+    fadd v17.2s, v19.2s, v17.2s
+
+    // More operations
+    fadd v18.2s, v24.2s, v16.2s        // q9 = q12 + q8
+    fadd v19.2s, v25.2s, v17.2s
+    fadd v9.2s, v23.2s, v20.2s         // d9 = d23 + d20
+    fsub v11.2s, v23.2s, v20.2s        // d11 = d23 - d20
+    fsub v16.2s, v24.2s, v16.2s        // q8 = q12 - q8
+    fsub v17.2s, v25.2s, v17.2s
+    fsub v8.2s, v22.2s, v21.2s         // d8 = d22 - d21
+    fadd v10.2s, v22.2s, v21.2s        // d10 = d22 + d21
+
+    // Load offset and twiddle
+    ldr w2, [x12], #4
+    ld1 {v20.2s, v21.2s}, [x11]        // Load twiddle factors
+    ldr w13, [x12], #4
+
+    // Transpose first results
+    trn1 v4.2s, v18.2s, v8.2s          // Real parts
+    trn2 v5.2s, v18.2s, v9.2s          // Imag parts
+
+    // Calculate addresses
+    add x2, x0, x2, lsl #2
+    trn1 v6.2s, v16.2s, v10.2s         // Real parts
+    trn2 v7.2s, v16.2s, v11.2s         // Imag parts
+    add x13, x0, x13, lsl #2
+
+    // Swap for correct order
+    mov v8.2s, v4.2s
+    mov v4.2s, v5.2s
+    mov v5.2s, v8.2s
+    mov v9.2s, v6.2s
+    mov v6.2s, v7.2s
+    mov v7.2s, v9.2s
+
+    // Store first set
+    st1 {v4.2s, v5.2s, v6.2s, v7.2s}, [x13], #64
+
+    // Load more data
+    ld2 {v26.2s, v27.2s}, [x10], #16   // q13 from stream 8
+    ld2 {v30.2s, v31.2s}, [x9], #16    // q15 from stream 7
+    ld2 {v22.2s, v23.2s}, [x8], #16    // q11 from stream 6
+
+    // More butterflies
+    fsub v28.2s, v30.2s, v26.2s        // q14 = q15 - q13
+    fsub v29.2s, v31.2s, v27.2s
+    fsub v24.2s, v0.2s, v22.2s         // q12 = q0 - q11
+    fsub v25.2s, v1.2s, v23.2s
+    fadd v22.2s, v0.2s, v22.2s         // q11 = q0 + q11
+    fadd v23.2s, v1.2s, v23.2s
+    fadd v26.2s, v30.2s, v26.2s        // q13 = q15 + q13
+    fadd v27.2s, v31.2s, v27.2s
+
+    // Final operations
+    fadd v13.2s, v29.2s, v24.2s        // d13 = d29 + d24
+    fadd v30.2s, v26.2s, v22.2s        // q15 = q13 + q11
+    fadd v31.2s, v27.2s, v23.2s
+    fsub v12.2s, v28.2s, v25.2s        // d12 = d28 - d25
+    fsub v15.2s, v29.2s, v24.2s        // d15 = d29 - d24
+    fadd v14.2s, v28.2s, v25.2s        // d14 = d28 + d25
+
+    // Transpose
+    trn1 v8.2s, v30.2s, v12.2s         // Real parts
+    trn2 v9.2s, v30.2s, v13.2s         // Imag parts
+    fsub v30.2s, v26.2s, v22.2s        // q15 = q13 - q11
+    fsub v31.2s, v27.2s, v23.2s
+    trn1 v10.2s, v30.2s, v14.2s        // Real parts
+    trn2 v11.2s, v30.2s, v15.2s        // Imag parts
+
+    // Swap for storage
+    mov v12.2s, v8.2s
+    mov v8.2s, v9.2s
+    mov v9.2s, v12.2s
+    mov v13.2s, v10.2s
+    mov v10.2s, v11.2s
+    mov v11.2s, v13.2s
+
+    // Store second set
+    st1 {v8.2s, v9.2s, v10.2s, v11.2s}, [x13], #64
+
+    // Apply twiddle factors
+    trn1 v26.2s, v26.2s, v28.2s        // q13 real parts
+    trn2 v27.2s, v26.2s, v28.2s        // q13 imag parts
+    trn1 v22.2s, v22.2s, v24.2s        // q11 real parts
+    trn2 v23.2s, v22.2s, v24.2s        // q11 imag parts
+
+    // Complex multiplication with twiddle
+    fmul v24.2s, v26.2s, v21.2s        // real * twiddle_imag
+    fmul v28.2s, v27.2s, v20.2s        // imag * twiddle_real
+    fmul v25.2s, v26.2s, v20.2s        // real * twiddle_real
+    fmul v26.2s, v27.2s, v21.2s        // imag * twiddle_imag
+    fmul v27.2s, v22.2s, v21.2s        // real * twiddle_imag
+    fmul v30.2s, v23.2s, v20.2s        // imag * twiddle_real
+    fmul v29.2s, v23.2s, v21.2s        // imag * twiddle_imag
+    fmul v22.2s, v22.2s, v20.2s        // real * twiddle_real
+
+    // Combine results
+    fsub v21.2s, v28.2s, v24.2s        // real result
+    fadd v20.2s, v26.2s, v25.2s        // imag result
+    fadd v25.2s, v30.2s, v27.2s        // real result
+    fsub v24.2s, v22.2s, v29.2s        // imag result
+
+    // Final butterflies
+    fadd v22.2s, v24.2s, v20.2s        // q11 = q12 + q10
+    fadd v23.2s, v25.2s, v21.2s
+    fsub v20.2s, v24.2s, v20.2s        // q10 = q12 - q10
+    fsub v21.2s, v25.2s, v21.2s
+
+    // Combine with previous results
+    fadd v0.2s, v18.2s, v22.2s         // q0 = q9 + q11
+    fadd v1.2s, v19.2s, v23.2s
+    fsub v4.2s, v18.2s, v22.2s         // q2 = q9 - q11
+    fsub v5.2s, v19.2s, v23.2s
+
+         // Final operations
+     fadd v3.2s, v17.2s, v20.2s         // d3 = d17 + d20
+     mov v2.2s, v16.2s                   // Save for later
+     
+     // Store final results  
+     trn1 v6.2s, v0.2s, v4.2s           // Real parts
+     trn2 v7.2s, v0.2s, v4.2s           // Imag parts
+     trn1 v8.2s, v2.2s, v3.2s           // Real parts
+     trn2 v9.2s, v2.2s, v3.2s           // Imag parts
+     
+     st2 {v6.2s, v7.2s}, [x2], #16      // Store results
+     st2 {v8.2s, v9.2s}, [x2], #16      // Store results
+     
+     ret
+
 // Symbol table for external linkage
 #ifdef __APPLE__
     .section __DATA,__const
@@ -611,6 +1176,10 @@ neon64_symbol_table:
     .quad _neon64_apply_twiddle
     .quad _neon64_radix4_butterfly
     .quad _neon64_fft_leaf
+    .quad _neon64_ee
+    .quad _neon64_oo
+    .quad _neon64_eo
+    .quad _neon64_oe
 
 // End of file
     .end 

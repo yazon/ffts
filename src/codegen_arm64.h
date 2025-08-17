@@ -127,45 +127,36 @@ generate_prologue_arm64(ffts_insn_t **p, struct _ffts_plan_t *plan)
     ARM64_MOV_X(p, ARM64_X0, ARM64_X2);
 
     /* x12 = plan->offsets (LDR x12, [x19, #off]) */
-    size_t off_offsets = (size_t)((const char*)&plan->offsets - (const char*)plan);
+    size_t off_offsets = offsetof(struct _ffts_plan_t, offsets);
     ARM64_LDRI_X(p, ARM64_X12, ARM64_X19, (uint32_t)off_offsets);
 
-    /* x1 is used as WS (twiddle) base pointer throughout codegen.c,
-     * so leave it as the LUT pointer argument and keep it updated there. */
+    /* x1 is used as stride (bytes) for base cases; x2 is the LUT pointer */
 
     /* Compute data stream pointers x3..x10 from input pointer (x1)
-     * using stride = N * sizeof(complex float) = N * 8 bytes.
-     * Pattern (mirrors ARM32):
-     *   x3  = x1
-     *   x7  = x1 + 1*stride
-     *   x5  = x1 + 2*stride
-     *   x10 = x7 + 2*stride
-     *   x4  = x5 + 2*stride
-     *   x8  = x10 + 2*stride
-     *   x6  = x4 + 2*stride
-     *   x9  = x8 + 2*stride
+     * using stride = N bytes (N/8 complex elements × 8 bytes), matching ARM32 order:
+     * ARM32 order from codegen_arm.h: r3=0*N, r7=1*N, r5=2*N, r10=3*N, r4=4*N, r8=5*N, r6=6*N, r9=7*N
+     *   x3  = base + 0*N
+     *   x7  = base + 1*N  <- ARM32 order: r7 gets 1*N
+     *   x5  = base + 2*N  <- ARM32 order: r5 gets 2*N
+     *   x10 = base + 3*N  <- ARM32 order: r10 gets 3*N
+     *   x4  = base + 4*N  <- ARM32 order: r4 gets 4*N
+     *   x8  = base + 5*N  <- ARM32 order: r8 gets 5*N
+     *   x6  = base + 6*N  <- ARM32 order: r6 gets 6*N
+     *   x9  = base + 7*N  <- ARM32 order: r9 gets 7*N
      */
-    size_t off_N = (size_t)((const char*)&plan->N - (const char*)plan);
+    size_t off_N = offsetof(struct _ffts_plan_t, N);
     /* Load N into x20 */
     ARM64_LDRI_X(p, ARM64_X20, ARM64_X19, (uint32_t)off_N);
-    /* x3 = x1 */
-    ARM64_MOV_X(p, ARM64_X3, ARM64_X1);
-    /* Compute stream pointers using ADD (shifted register): Xd = Xn + Xm LSL #imm */
-    /* x7  = x1 + x20 LSL #3  (1*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X7,  ARM64_X1,  ARM64_X20, ARM64_SHIFT_LSL, 3);
-    /* x5  = x1 + x20 LSL #4  (2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X5,  ARM64_X1,  ARM64_X20, ARM64_SHIFT_LSL, 4);
-    /* x10 = x7 + x20 LSL #4  (x7 + 2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X10, ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 4);
-    /* x4  = x5 + x20 LSL #4  (x5 + 2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X4,  ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 4);
-    /* x8  = x10 + x20 LSL #4 (x10 + 2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X8,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 4);
-    /* x6  = x4 + x20 LSL #4  (x4 + 2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X6,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 4);
-    /* x9  = x8 + x20 LSL #4  (x8 + 2*stride) */
-    arm64_emit_add_shifted_reg(p, ARM64_X9,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 4);
-
+    /* ARM32-compatible register assignment order with correct stride (N*8 bytes) */
+    ARM64_MOV_X(p, ARM64_X3,  ARM64_X1);                                              /* x3  = base + 0*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X7,  ARM64_X1, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x7  = base + 1*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X5,  ARM64_X7, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x5  = base + 2*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X10, ARM64_X5, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x10 = base + 3*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x4  = base + 4*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X8,  ARM64_X4, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x8  = base + 5*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X6,  ARM64_X8, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x6  = base + 6*N */
+    arm64_emit_add_shifted_reg(p, ARM64_X9,  ARM64_X6, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x9  = base + 7*N */
+ 
     return start;
 }
 
@@ -184,9 +175,8 @@ generate_leaf_init_arm64(ffts_insn_t **p, uint32_t loop_count)
     /* movz x11, #(imm16) */
     arm64_emit_instruction(p, ARM64_MOVZ_ENCODE(1, 11u, (loop_count & 0xffffu), 0));
     /* movk x11, #(imm16), lsl #16 if needed */
-    if ((loop_count >> 16) & 0xffffu) {
+    if ((loop_count >> 16) & 0xffffu) 
         arm64_emit_instruction(p, ARM64_MOVK_ENCODE(1, 11u, ((loop_count >> 16) & 0xffffu), 1));
-    }
 }
 
 static inline void

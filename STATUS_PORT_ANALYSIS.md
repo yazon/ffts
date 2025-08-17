@@ -73,32 +73,6 @@ Checklist
   - [x] Ensure x11 loop counter correctness for ee/oo and twiddle usage for eo/oe
   - [x] Verify offsets (x12) base loaded from plan and used consistently in oo/oe
   - [x] Verify x2/x11 twiddle pointers per leaf stage
-  - [ ] Re-test N=8/16 → L2 error small
-  - [ ] Re-test N>=32 → no SIGILL/SEGV 
-
-#### 2025-08-09 (cont. 2)
-- Root cause for N=8/16 numerical mismatch on ARM64 vs ARM32 identified:
-  - Base-case blobs `neon64_x8`/`neon64_x8_t` expect `x0 = data base` and internally compute `x3..x10` from `x0` and stride `x1` (mirrors ARM32). Our ARM64 prologue sets `x0 = out` and `x1 = in`, then we call x8 with `x0` still pointing at `out`. This causes the base-case to read/write using the wrong base pointer, yielding incorrect results for N=8/16.
-  - ARM32 path calls base-cases with `r0 = data`, with the final out placement handled by later leaves using δk offsets. ARM64 must mirror this by temporarily mapping `x0 = x1` for base-case calls.
-- Planned fix:
-  - Before calling/copying x8/x8_t, emit `mov x0, x1`. After base-case returns (or after the inline-copy), restore `mov x0, x2` so leaves still see `x0 = out`.
-  - Keep `x1` as stride in bytes (N << 3) as already done. Do not rely on prologue x3..x10 for base-case; blobs recompute them.
-  - Re-run N=8/16 after this change; expect L2 error ~1e-8 (per ARM32 baseline).
-- Evidence:
-  - In `neon64.s`, both `neon64_x8` and `neon64_x8_t` build x3..x10 from `x0` (lines 175–186, 377–387) and use `x1` as stride. Loop uses `x11` and twiddles via `x12`. This matches ARM32 `neon.s` setup (lines 91–101), which always assumed `r0 = data`.
-  - Our ARM64 `codegen.c` currently sets stride `x1` correctly and adjusts `x2` (twiddle base), but never maps `x0` to input before base-case calls/inlining.
-
-- Next actions:
-  1) Edit `src/codegen.c` ARM64 base-case emission to wrap x8/x8_t with `mov x0, x1` and restore `mov x0, x2`.
-  2) Rebuild and test N=8/16 (forward/inverse). Capture L2 errors.
-  3) If residual error remains, re-check AArch64 sign flips in x8_t (bit 23) but current toggling covers FADD/FSUB and FMLA/FMLS classes already.
-
-- Checklist updates
-  - [x] Tighten x8 blob range and patch
-  - [x] Implement ARM64 prologue stream pointer setup via helper
-  - [x] Ensure x11 loop counter correctness for ee/oo and twiddle usage for eo/oe
-  - [x] Verify offsets (x12) base loaded from plan and used consistently in oo/oe
-  - [x] Verify x2/x11 twiddle pointers per leaf stage
   - [x] Diagnose N=8/16 mismatch: base-case called with x0 = out instead of input
   - [ ] Fix base-case call-site mapping (x0 ← x1 before, x0 ← x2 after)
   - [ ] Re-test N=8/16 → L2 error small
@@ -156,4 +130,24 @@ Checklist
   - [ ] Verify LUT/sign parity for base-case (x8/x8_t) against ARM32
   - [ ] Instrument and compare first iteration twiddles/results (N=8)
   - [ ] Re-test N=8/16 → L2 small
+  - [ ] Fix N≥32 segfault after base-case parity is achieved 
+
+#### 2025-08-10
+- Added targeted N=8 tracing to `tests/test` via `--trace-n8 <sign>`:
+  - Dumps `p->ws` first-stage twiddles (16 floats), stride assumptions, stream pointer offsets for ARM32 vs ARM64, and pre/post buffers.
+  - Purpose: capture concrete evidence of LUT/stride mismatches at the base-case stage.
+- Created scripts:
+  - `scripts/run_arm32_tests.sh` – builds dynamic ARM32 and runs `--trace-n8` and `--l2 8` under qemu-arm.
+  - `scripts/run_arm64_tests.sh` – builds dynamic ARM64 and runs `--trace-n8` and `--l2 8` under qemu-aarch64. CPU model override via `QEMU_CPU`.
+- Next step-by-step (evidence-first):
+Results:
+  - ARM32 `--trace-n8 -1`: L2 ≈ 1.21e-08; outputs as expected.
+  - ARM64 `--trace-n8 -1` BEFORE fix: L2 = 1.0; outputs had sign/layout differences.
+  - Change applied: corrected ARM64 `V4SF_K_N` complex multiply in `src/macros.h` to match ARM32 semantics (use re/im directly with data vectors).
+  - ARM64 `--trace-n8 -1` AFTER fix: L2 ≈ 1.21e-08; outputs match ARM32. `--l2 16 -1` also ≈ 2.22e-08.
+  - Note: `build_arm64.sh` initial sweep segfault persists (likely at N≥32), but N=8/16 correctness is now achieved.
+- Checklist updates
+  - [x] Add focused L2/trace modes and scripts to run N=8 without sweeping
+  - [x] Verify LUT/sign parity for base-case with concrete dumps
+  - [x] Re-test N=8/16 → L2 small
   - [ ] Fix N≥32 segfault after base-case parity is achieved 

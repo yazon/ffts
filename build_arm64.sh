@@ -114,6 +114,7 @@ echo "Libraries: $INSTALL_DIR/lib/"
 echo "Headers: $INSTALL_DIR/include/"
 
 # Optional: Create a simple test if we can run ARM64 binaries
+if [ -z "$SKIP_QEMU_TEST" ]; then
 if command -v qemu-aarch64 &> /dev/null && [ "$TOOLCHAIN" = "aarch64-linux-gnu" ]; then
     echo "Testing with QEMU..."
     # Allow caller to choose a specific emulated CPU; default to a model that
@@ -128,4 +129,5 @@ if command -v qemu-aarch64 &> /dev/null && [ "$TOOLCHAIN" = "aarch64-linux-gnu" 
     else
         echo "No test executable found to run with QEMU"
     fi
+fi
 fi 

@@ -124,6 +124,10 @@ void ffts_execute_1d_32f_arm64_sve(ffts_plan_t *p, const void *input, void *outp
 
 #endif /* __aarch64__ */
 
+// Debug controls for optional store snapshots in ARM64 leaves
+extern volatile uint32_t ffts_arm64_debug_stores_enabled;
+extern volatile uint8_t *ffts_arm64_debug_buf;
+
 #ifdef __cplusplus
 }
 #endif

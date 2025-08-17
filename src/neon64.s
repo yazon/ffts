@@ -155,6 +155,16 @@ neon64_x4:
 // x11: Loop counter.
 // v0-v15: NEON registers for SIMD computation.
 //
+// Data Layout:
+// - Complex numbers stored as interleaved pairs [Re₀, Im₀, Re₁, Im₁, ...]
+// - Each v register with .4s holds 4 float32 values = 2 complex numbers
+// - Two v registers together process 4 complex numbers per operation
+//
+// Algorithm: Radix-8 FFT using three stages of radix-2 butterflies:
+// 1. First stage: Process data[2,3] with twiddle factors, butterfly with data[0,1]
+// 2. Second stage: Process data[4,5,6,7] with twiddle factors  
+// 3. Third stage: Final combinations and output with post-increment stores
+//
 // NOTE: This function does NOT save any GPRs or Vector registers. The caller
 // is responsible for saving any registers that must be preserved.
 //
@@ -186,101 +196,119 @@ neon64_x8:
     add      x10, x9, x1          // x10 = &data7
     add      x12, x2, xzr         // x12 = LUT pointer
 
+
     // --- Loop Counter Setup ---
     // The loop runs (x1 / 32) times. Each iteration processes 4 complex numbers
     // (4 * 8 bytes = 32 bytes). We initialize the counter to -(x1/32)
     // and count up to zero.
     neg      x11, x1, lsr #5      // x11 = - (x1 >> 5)
 
+    brk      #0x0810
+
 1:  // Start of the main loop
 
-    // --- Load Twiddles and Data ---
+    // --- Phase 1: Load Twiddle Factors and Initial Data ---
     // Load 4 complex numbers (256 bits) of twiddle factors from the LUT.
     // Post-increment the LUT pointer (x12) by 32 bytes.
+    brk      #0x8C10 // BRK_X8_PRE_LUT_LOAD0
     ld1      {v2.4s,  v3.4s},  [x12], #32
+    brk      #0x8C11 // BRK_X8_POST_LUT_LOAD0
     // Load data from streams 3 and 2.
     ld1      {v14.4s, v15.4s}, [x6]
     ld1      {v10.4s, v11.4s}, [x5]
 
     // --- Loop Counter Increment ---
-    // Increment counter and check if the loop should continue.
+    // Increment counter and continue if the loop should continue.
     add      x11, x11, #1
 
-    // --- Butterfly Computation (Part 1) ---
-    // This block corresponds to the first part of the size-8 butterfly calculation.
-    fmul     v12.4s, v15.4s, v2.4s
-    fmul     v8.4s,  v14.4s, v3.4s
-    fmul     v13.4s, v14.4s, v2.4s
-    fmul     v9.4s,  v10.4s, v3.4s
-    fmul     v1.4s,  v10.4s, v2.4s
-    fmul     v0.4s,  v11.4s, v2.4s
-    fmul     v14.4s, v11.4s, v3.4s
-    fmul     v15.4s, v15.4s, v3.4s
+    // --- Phase 2: First Butterfly Computation Stage ---
+    // Complex multiplication: data[2,3] × twiddle_factors
+    // (a + bi) × (c + di) = (ac - bd) + (ad + bc)i
+    fmul     v12.4s, v15.4s, v2.4s         // v12 = data[3].imag × twiddle.real
+    fmul     v8.4s,  v14.4s, v3.4s         // v8  = data[3].real × twiddle.imag
+    fmul     v13.4s, v14.4s, v2.4s         // v13 = data[3].real × twiddle.real
+    fmul     v9.4s,  v10.4s, v3.4s         // v9  = data[2].real × twiddle.imag
+    fmul     v1.4s,  v10.4s, v2.4s         // v1  = data[2].real × twiddle.real
+    fmul     v0.4s,  v11.4s, v2.4s         // v0  = data[2].imag × twiddle.real
+    fmul     v14.4s, v11.4s, v3.4s         // v14 = data[2].imag × twiddle.imag
+    fmul     v15.4s, v15.4s, v3.4s         // v15 = data[3].imag × twiddle.imag
 
-    // Load next set of twiddle factors.
+    // Load next set of twiddle factors for second butterfly stage
+    brk      #0x8C12 // BRK_X8_PRE_LUT_LOAD1
     ld1      {v2.4s,  v3.4s},  [x12], #32
+    brk      #0x8C13 // BRK_X8_POST_LUT_LOAD1
 
-    fsub     v10.4s, v12.4s, v8.4s
-    fadd     v11.4s, v0.4s,  v9.4s
-    fadd     v8.4s,  v15.4s, v13.4s
+    // Complete complex multiplications and first butterfly stage
+    fsub     v10.4s, v12.4s, v8.4s         // v10 = complex multiplication result (imag part)
+    fadd     v11.4s, v0.4s,  v9.4s         // v11 = complex multiplication result (imag part)
+    fadd     v8.4s,  v15.4s, v13.4s        // v8  = complex multiplication result (real part)
 
-    // Load data from stream 1.
+    // Load data from stream 1 for butterfly operations
     ld1      {v12.4s, v13.4s}, [x4]
 
-    fsub     v9.4s,  v1.4s,  v14.4s
-    fsub     v15.4s, v11.4s, v10.4s
-    fsub     v14.4s, v9.4s,  v8.4s
-    fsub     v4.4s,  v12.4s, v15.4s
-    fadd     v6.4s,  v12.4s, v15.4s
-    fadd     v5.4s,  v13.4s, v14.4s
-    fsub     v7.4s,  v13.4s, v14.4s
+    // Continue butterfly computations
+    fsub     v9.4s,  v1.4s,  v14.4s        // v9  = complex subtraction result
+    fsub     v15.4s, v11.4s, v10.4s        // v15 = intermediate butterfly result
+    fsub     v14.4s, v9.4s,  v8.4s         // v14 = intermediate butterfly result
+    fsub     v4.4s,  v12.4s, v15.4s        // v4  = data[1] - processed_result
+    fadd     v6.4s,  v12.4s, v15.4s        // v6  = data[1] + processed_result
+    fadd     v5.4s,  v13.4s, v14.4s        // v5  = combined butterfly result
+    fsub     v7.4s,  v13.4s, v14.4s        // v7  = combined butterfly result
 
-    // Load data from streams 6 and 4.
+    // --- Phase 3: Second Butterfly Computation Stage ---
+    // Load data from streams 6 and 4 for processing
     ld1      {v14.4s, v15.4s}, [x9]
     ld1      {v12.4s, v13.4s}, [x7]
 
-    fmul     v1.4s,  v14.4s, v2.4s
+    // Begin complex multiplications for second stage
+    fmul     v1.4s,  v14.4s, v2.4s         // Complex multiplication: data[6] × twiddle
     fmul     v0.4s,  v14.4s, v3.4s
 
-    // Store intermediate results to streams 1 and 3.
+    // Store intermediate results to data[1] (no post-increment)
     st1      {v4.4s,  v5.4s},  [x4]
 
-    fmul     v14.4s, v15.4s, v3.4s
+    // Continue complex multiplications
+    fmul     v14.4s, v15.4s, v3.4s         // Continue data[6] × twiddle
     fmul     v4.4s,  v15.4s, v2.4s
-    fadd     v15.4s, v9.4s,  v8.4s
-    
+    fadd     v15.4s, v9.4s,  v8.4s          // Combine previous results
+
+    // Store intermediate results to data[3] (no post-increment)  
     st1      {v6.4s,  v7.4s},  [x6]
 
-    // --- Butterfly Computation (Part 2) ---
-    fmul     v8.4s,  v12.4s, v3.4s
+    // Process data[4] with twiddle factors
+    fmul     v8.4s,  v12.4s, v3.4s         // Complex multiplication: data[4] × twiddle
     fmul     v5.4s,  v13.4s, v3.4s
     fmul     v12.4s, v12.4s, v2.4s
     fmul     v9.4s,  v13.4s, v2.4s
-    fadd     v14.4s, v14.4s, v1.4s
+    fadd     v14.4s, v14.4s, v1.4s         // Complete complex multiplication
     fsub     v13.4s, v4.4s,  v0.4s
     fadd     v0.4s,  v9.4s,  v8.4s
 
-    // Load data from stream 0.
+    // Load data from stream 0 for final butterfly combinations
     ld1      {v8.4s,  v9.4s},  [x3]
 
-    fadd     v1.4s,  v11.4s, v10.4s
-    fsub     v12.4s, v12.4s, v5.4s
-    fadd     v11.4s, v8.4s,  v15.4s
+    // --- Phase 4: Final Butterfly Stage and Data Combination ---
+    fadd     v1.4s,  v11.4s, v10.4s        // Combine earlier butterfly results
+    fsub     v12.4s, v12.4s, v5.4s         // Continue complex arithmetic
+    fadd     v11.4s, v8.4s,  v15.4s        // Combine data[0] with processed results
     fsub     v8.4s,  v8.4s,  v15.4s
-    fadd     v2.4s,  v12.4s, v14.4s
+    fadd     v2.4s,  v12.4s, v14.4s        // Final butterfly combinations
     fsub     v10.4s, v0.4s,  v13.4s
     fadd     v15.4s, v0.4s,  v13.4s
     fadd     v13.4s, v9.4s,  v1.4s
     fsub     v9.4s,  v9.4s,  v1.4s
     fsub     v12.4s, v12.4s, v14.4s
-    fadd     v0.4s,  v11.4s, v2.4s
+    fadd     v0.4s,  v11.4s, v2.4s         // Final output preparation
     fadd     v1.4s,  v13.4s, v15.4s
     fsub     v4.4s,  v11.4s, v2.4s
     fsub     v2.4s,  v8.4s,  v10.4s
     fadd     v3.4s,  v9.4s,  v12.4s
     
     // Store results to stream 0, post-incrementing the pointer.
-    st1      {v0.4s,  v1.4s},  [x3], #32
+    brk      #0x8C20 // BRK_X8_PRE_ST_DATA0
+    brk      #0x8D30 // BRK_X8T_PRE_ST_F0
+  st1      {v0.4s,  v1.4s},  [x3], #32
+    nop // removed BRK_X8_POST_ST_DATA0
 
     fsub     v5.4s,  v13.4s, v15.4s
     // Load data from streams 7 and 5.
@@ -289,83 +317,111 @@ neon64_x8:
     ld1      {v12.4s, v13.4s}, [x8]
 
     // Store results to stream 2, post-incrementing the pointer.
-    st1      {v2.4s,  v3.4s},  [x5], #32
+    brk      #0x8C22 // BRK_X8_PRE_ST_DATA2
+    brk      #0x8D31 // BRK_X8T_PRE_ST_F2
+  st1      {v2.4s,  v3.4s},  [x5], #32
 
-    // Load next set of twiddle factors.
+    // Load final set of twiddle factors
     ld1      {v2.4s,  v3.4s},  [x12], #32
 
     fadd     v6.4s,  v8.4s,  v10.4s
 
-    // --- Butterfly Computation (Part 3) ---
-    fmul     v8.4s,  v14.4s, v2.4s
+    // --- Phase 5: Final Data Processing (Third Stage) ---
+    fmul     v8.4s,  v14.4s, v2.4s         // Process data[7] × twiddle
 
     // Store results to stream 4, post-incrementing the pointer.
-    st1      {v4.4s,  v5.4s},  [x7], #32
+    brk      #0x8C24 // BRK_X8_PRE_ST_DATA4
+    brk      #0x8D32 // BRK_X8T_PRE_ST_F4
+  st1      {v4.4s,  v5.4s},  [x7], #32
 
-    fmul     v10.4s, v15.4s, v3.4s
-    fmul     v9.4s,  v13.4s, v3.4s
+    // Complete final complex multiplications
+    fmul     v10.4s, v15.4s, v3.4s         // Continue data[7] × twiddle
+    fmul     v9.4s,  v13.4s, v3.4s         // Process data[5] × twiddle
     fmul     v11.4s, v12.4s, v2.4s
     fmul     v14.4s, v14.4s, v3.4s
     
     // Store results to stream 6, post-incrementing the pointer.
-    st1      {v6.4s,  v7.4s},  [x9], #32
+    brk      #0x8C26 // BRK_X8_PRE_ST_DATA6
+    brk      #0x8D33 // BRK_X8T_PRE_ST_F6
+  st1      {v6.4s,  v7.4s},  [x9], #32
     
     fmul     v15.4s, v15.4s, v2.4s
     fmul     v12.4s, v12.4s, v3.4s
     fmul     v13.4s, v13.4s, v2.4s
-    fadd     v10.4s, v10.4s, v8.4s
+    fadd     v10.4s, v10.4s, v8.4s         // Combine multiplication results
     fsub     v11.4s, v11.4s, v9.4s
     
-    // Load data from stream 1.
-    ld1      {v8.4s,  v9.4s},  [x4]
-    
-    fsub     v14.4s, v15.4s, v14.4s
+    // Load data for final butterfly combinations
+    ld1      {v8.4s,  v9.4s},  [x4]        // Reload data[1] for final processing
+
+    fsub     v14.4s, v15.4s, v14.4s        // Complete complex arithmetic
     fadd     v15.4s, v13.4s, v12.4s
-    fadd     v13.4s, v11.4s, v10.4s
+    fadd     v13.4s, v11.4s, v10.4s        // Final butterfly results
     fadd     v12.4s, v15.4s, v14.4s
     fsub     v15.4s, v15.4s, v14.4s
     fsub     v14.4s, v11.4s, v10.4s
-    
-    // Load data from stream 3.
-    ld1      {v10.4s, v11.4s}, [x6]
-    
-    fadd     v0.4s,  v8.4s,  v13.4s
+
+    // Load final data for output combinations
+    ld1      {v10.4s, v11.4s}, [x6]        // Reload data[3] for final processing
+
+    // --- Phase 6: Final Output Computations and Storage ---
+    fadd     v0.4s,  v8.4s,  v13.4s        // Final butterfly combinations
     fadd     v1.4s,  v9.4s,  v12.4s
     fsub     v2.4s,  v10.4s, v15.4s
     fadd     v3.4s,  v11.4s, v14.4s
     fsub     v4.4s,  v8.4s,  v13.4s
-    
-    // Store final results for this iteration to streams 1, 3, 5, 7.
-    st1      {v0.4s,  v1.4s},  [x4], #32
-    
+
+    // Store final results with post-increment to remaining data streams
+    brk      #0x8C30 // BRK_X8_PRE_ST_DATA0
+    st1      {v0.4s,  v1.4s},  [x4], #32   // Store to data[1] with post-increment
+
     fsub     v5.4s,  v9.4s,  v12.4s
     fadd     v6.4s,  v10.4s, v15.4s
-    
-    st1      {v2.4s,  v3.4s},  [x6], #32
-    
-    fsub     v7.4s,  v11.4s, v14.4s
-    
-    st1      {v4.4s,  v5.4s},  [x8], #32
-    st1      {v6.4s,  v7.4s},  [x10], #32
 
-    // --- Loop Branch ---
-    // Branch back to the top of the loop if the counter (x11) is not yet zero.
+    brk      #0x8C34 // BRK_X8_PRE_ST_DATA2
+    st1      {v2.4s,  v3.4s},  [x6], #32   // Store to data[3] with post-increment
+
+    fsub     v7.4s,  v11.4s, v14.4s
+
+    brk      #0x8C38 // BRK_X8_PRE_ST_DATA4
+    st1      {v4.4s,  v5.4s},  [x8], #32   // Store to data[5] with post-increment
+    st1      {v6.4s,  v7.4s},  [x10], #32  // Store to data[7] with post-increment
+
+    // --- Loop Control ---
+    // Continue loop while counter is not zero (started negative, increments to 0)
     cbnz     x11, 1b
 
-    // --- Epilogue ---
-    ret // Return to the caller.
+    // --- Function Exit ---
+    ret // Return to the caller
 
   //
-  // AArch64 implementation of neon_x8_t
+  // AArch64 implementation of neon_x8_t - 8-point FFT with transpose output
+  //
+  // This function implements a vectorized 8-point Cooley-Tukey FFT butterfly 
+  // with transposed output using ARM64 NEON instructions. It processes multiple
+  // 8-point FFTs in parallel, with each iteration handling 4 complex numbers 
+  // per data point. The transpose operation is integrated into the store 
+  // operations using st2 instructions.
   //
   // Register mapping from ARM32 to AArch64:
-  // r0 (data) -> x0
-  // r1 (N)    -> x1
-  // r2 (LUT)  -> x2
-  // r3..r10 (pointers) -> x3..x10
-  // r11 (counter)      -> x11
-  // r12 (LUT ptr)      -> x12
-  // q0..q15 (NEON)     -> v0..v15
+  // r0 (data base ptr)    -> x0
+  // r1 (stride in bytes)  -> x1  
+  // r2 (LUT base ptr)     -> x2
+  // r3..r10 (data ptrs)   -> x3..x10
+  // r11 (loop counter)    -> x11
+  // r12 (LUT current ptr) -> x12
+  // q0..q15 (NEON regs)   -> v0..v15
+  //
+  // Input Parameters:
+  // x0: Pointer to input/output data buffer (complex float array)
+  // x1: Stride between data elements in bytes
+  // x2: Pointer to Look-Up Table (LUT) containing twiddle factors
+  //
+  // Data Layout:
+  // - Complex numbers stored as interleaved pairs [Re₀, Im₀, Re₁, Im₁, ...]
+  // - Input: 8 data streams, each processing 4 complex numbers per iteration
+  // - Output: Transposed complex data using st2 de-interleaving stores
+  //
     .align 4
 #ifdef __APPLE__
     .globl _neon64_x8_t
@@ -374,193 +430,226 @@ _neon64_x8_t:
     .globl neon64_x8_t
 neon64_x8_t:
 #endif
-  // Pointer setup
-  mov      x11, xzr             // x11 = 0
-  mov      x3, x0               // x3 = &data[0]
-  add      x5, x0, x1, lsl #1   // x5 = &data[2N]
-  mov      x4, x1               // Use x4 as a temporary holder for N
-  add      x4, x0, x4           // x4 = &data[N]
-  add      x7, x5, x1, lsl #1   // x7 = &data[4N]
-  add      x6, x5, x1           // x6 = &data[3N]
-  add      x9, x7, x1, lsl #1   // x9 = &data[6N]
-  add      x8, x7, x1           // x8 = &data[5N]
-  add      x10, x9, x1          // x10 = &data[7N]
-  mov      x12, x2              // x12 = LUT pointer
+  // --- Data Pointer Setup ---
+  // Calculate pointers to the 8 parallel data streams based on stride
+  mov      x11, xzr             // Initialize loop counter to 0
 
-  // Initialize loop counter. Loop will run N/32 times.
-  lsr      x11, x1, #5          // x11 = N / 32
-  neg      x11, x11             // x11 = -(N / 32)
+  brk      #0x8D00 // BRK_X8T_ENTRY
 
-1:
-  // Load two sets of twiddle factors (4x 32-bit floats each) from LUT
-  ld1      {v2.4s,  v3.4s},  [x12], #32
+  // NEW: Verify entry parameters for x8_t
+  brk      #0x8D02 // BRK_X8T_ENTRY_PARAMS
 
-  // Load data from memory
-  ld1      {v14.4s, v15.4s}, [x6]
-  ld1      {v10.4s, v11.4s}, [x5]
+  mov      x3, x0               // x3 = &data[0] (base pointer)
+  add      x5, x0, x1, lsl #1   // x5 = &data[0] + stride*2 = &data[2]
+  add      x4, x0, x1           // x4 = &data[0] + stride*1 = &data[1]  
+  add      x7, x5, x1, lsl #1   // x7 = &data[2] + stride*2 = &data[4]
+  add      x6, x5, x1           // x6 = &data[2] + stride*1 = &data[3]
+  add      x9, x7, x1, lsl #1   // x9 = &data[4] + stride*2 = &data[6]
+  add      x8, x7, x1           // x8 = &data[4] + stride*1 = &data[5]
+  add      x10, x9, x1          // x10 = &data[6] + stride*1 = &data[7]
+  mov      x12, x2              // x12 = LUT current pointer (advances each iteration)
 
-  // Increment and test loop counter
-  add      x11, x11, #1
+  // --- Loop Counter Setup ---
+  // Initialize counter to -(stride/32). Each iteration processes 32 bytes
+  // (4 complex numbers × 8 bytes per complex number)
+  lsr      x11, x1, #5          // x11 = stride / 32 (number of iterations)
+  neg      x11, x11             // x11 = -(stride / 32) (count up to 0)
 
-  // Butterfly computations - Part 1
-  fmul     v12.4s, v15.4s, v2.4s
-  fmul     v8.4s,  v14.4s, v3.4s
-  fmul     v13.4s, v14.4s, v2.4s
-  fmul     v9.4s,  v10.4s, v3.4s
-  fmul     v1.4s,  v10.4s, v2.4s
-  fmul     v0.4s,  v11.4s, v2.4s
-  fmul     v14.4s, v11.4s, v3.4s
-  fmul     v15.4s, v15.4s, v3.4s
 
-  // Load next set of twiddle factors
-  ld1      {v2.4s,  v3.4s},  [x12], #32
+1:  // === Main Loop Body ===
+  
+  // NEW: Main loop iteration start for x8_t
+  brk      #0x8D03 // BRK_X8T_LOOP_START
+  
+  // --- Phase 1: Load Twiddle Factors and Initial Data ---
+  ld1      {v2.4s,  v3.4s},  [x12], #32  // Load 8 twiddle factors (32 bytes) with post-increment
+  ld1      {v14.4s, v15.4s}, [x6]        // Load 8 floats from data[3] (no increment)
+  ld1      {v10.4s, v11.4s}, [x5]        // Load 8 floats from data[2] (no increment)
 
-  fsub     v10.4s, v12.4s, v8.4s
-  fadd     v11.4s, v0.4s,  v9.4s
-  fadd     v8.4s,  v15.4s, v13.4s
+  // Increment loop counter and continue if not zero
+  add      x11, x11, #1                   // Increment counter (starts negative, counts to 0)
 
-  // Load more data
-  ld1      {v12.4s, v13.4s}, [x4]
+  // --- Phase 2: First Butterfly Computation Stage ---
+  // Complex multiplication: data[2,3] × twiddle_factors
+  // (a + bi) × (c + di) = (ac - bd) + (ad + bc)i
+  fmul     v12.4s, v15.4s, v2.4s         // v12 = data[3].imag × twiddle.real
+  fmul     v8.4s,  v14.4s, v3.4s         // v8  = data[3].real × twiddle.imag
+  fmul     v13.4s, v14.4s, v2.4s         // v13 = data[3].real × twiddle.real
+  fmul     v9.4s,  v10.4s, v3.4s         // v9  = data[2].real × twiddle.imag
+  fmul     v1.4s,  v10.4s, v2.4s         // v1  = data[2].real × twiddle.real
+  fmul     v0.4s,  v11.4s, v2.4s         // v0  = data[2].imag × twiddle.real
+  fmul     v14.4s, v11.4s, v3.4s         // v14 = data[2].imag × twiddle.imag
+  fmul     v15.4s, v15.4s, v3.4s         // v15 = data[3].imag × twiddle.imag
 
-  fsub     v9.4s,  v1.4s,  v14.4s
-  fsub     v15.4s, v11.4s, v10.4s
-  fsub     v14.4s, v9.4s,  v8.4s
-  fsub     v4.4s,  v12.4s, v15.4s
-  fadd     v6.4s,  v12.4s, v15.4s
-  fadd     v5.4s,  v13.4s, v14.4s
-  fsub     v7.4s,  v13.4s, v14.4s
+  // Load next set of twiddle factors for second butterfly stage
+  ld1      {v2.4s,  v3.4s},  [x12], #32  // Load next 8 twiddle factors
 
-  // Load more data
+  // Complete complex multiplications and first butterfly stage
+  fsub     v10.4s, v12.4s, v8.4s         // v10 = complex multiplication result (real part)
+  fadd     v11.4s, v0.4s,  v9.4s         // v11 = complex multiplication result (imag part)
+  fadd     v8.4s,  v15.4s, v13.4s        // v8  = complex multiplication result
+
+  // Load data from stream 1 for butterfly operations
+  ld1      {v12.4s, v13.4s}, [x4]        // Load 8 floats from data[1]
+
+  // Continue butterfly computations
+  fsub     v9.4s,  v1.4s,  v14.4s        // v9  = complex subtraction result
+  fsub     v15.4s, v11.4s, v10.4s        // v15 = intermediate butterfly result
+  fsub     v14.4s, v9.4s,  v8.4s         // v14 = intermediate butterfly result
+  fsub     v4.4s,  v12.4s, v15.4s        // v4  = data[1] - processed_result
+  fadd     v6.4s,  v12.4s, v15.4s        // v6  = data[1] + processed_result
+  fadd     v5.4s,  v13.4s, v14.4s        // v5  = combined butterfly result
+  fsub     v7.4s,  v13.4s, v14.4s        // v7  = combined butterfly result
+
+  // --- Phase 3: Second Butterfly Computation Stage ---
+  // Load data from streams 6 and 4 for processing
   ld1      {v14.4s, v15.4s}, [x9]
   ld1      {v12.4s, v13.4s}, [x7]
 
-  // Butterfly computations - Part 2
-  fmul     v1.4s,  v14.4s, v2.4s
+  // Begin complex multiplications for second stage
+  fmul     v1.4s,  v14.4s, v2.4s         // Complex multiplication: data[6] × twiddle
   fmul     v0.4s,  v14.4s, v3.4s
 
-  // Store intermediate results
+  // Store intermediate results to data[1] (no post-increment)
+  brk      #0x8D20 // BRK_X8T_PRE_ST_I1
   st1      {v4.4s,  v5.4s},  [x4]
 
-  fmul     v14.4s, v15.4s, v3.4s
+  // Continue complex multiplications
+  fmul     v14.4s, v15.4s, v3.4s         // Continue data[6] × twiddle
   fmul     v4.4s,  v15.4s, v2.4s
-  fadd     v15.4s, v9.4s,  v8.4s
+  fadd     v15.4s, v9.4s,  v8.4s          // Combine previous results
 
-  // Store intermediate results
+  // Store intermediate results to data[3] (no post-increment)
+  brk      #0x8D21 // BRK_X8T_PRE_ST_I3
   st1      {v6.4s,  v7.4s},  [x6]
 
-  fmul     v8.4s,  v12.4s, v3.4s
+  // Process data[4] with twiddle factors
+  fmul     v8.4s,  v12.4s, v3.4s         // Complex multiplication: data[4] × twiddle
   fmul     v5.4s,  v13.4s, v3.4s
   fmul     v12.4s, v12.4s, v2.4s
   fmul     v9.4s,  v13.4s, v2.4s
-  fadd     v14.4s, v14.4s, v1.4s
+  fadd     v14.4s, v14.4s, v1.4s         // Complete complex multiplication
   fsub     v13.4s, v4.4s,  v0.4s
   fadd     v0.4s,  v9.4s,  v8.4s
 
-  // Load data for final combination
+  // Load data from stream 0 for final butterfly combinations
   ld1      {v8.4s,  v9.4s},  [x3]
 
-  fadd     v1.4s,  v11.4s, v10.4s
-  fsub     v12.4s, v12.4s, v5.4s
-  fadd     v11.4s, v8.4s,  v15.4s
+  // --- Phase 4: Final Butterfly Stage and Data Combination ---
+  fadd     v1.4s,  v11.4s, v10.4s        // Combine earlier butterfly results
+  fsub     v12.4s, v12.4s, v5.4s         // Continue complex arithmetic
+  fadd     v11.4s, v8.4s,  v15.4s        // Combine data[0] with processed results
   fsub     v8.4s,  v8.4s,  v15.4s
-  fadd     v2.4s,  v12.4s, v14.4s
+  fadd     v2.4s,  v12.4s, v14.4s        // Final butterfly combinations
   fsub     v10.4s, v0.4s,  v13.4s
   fadd     v15.4s, v0.4s,  v13.4s
   fadd     v13.4s, v9.4s,  v1.4s
   fsub     v9.4s,  v9.4s,  v1.4s
   fsub     v12.4s, v12.4s, v14.4s
-  fadd     v0.4s,  v11.4s, v2.4s
+  fadd     v0.4s,  v11.4s, v2.4s         // Final output preparation
   fadd     v1.4s,  v13.4s, v15.4s
   fsub     v4.4s,  v11.4s, v2.4s
   fsub     v2.4s,  v8.4s,  v10.4s
   fadd     v3.4s,  v9.4s,  v12.4s
 
-  // Store final results with interleaving
-  st2      {v0.4s,  v1.4s},  [x3], #32
-
-  fsub     v5.4s,  v13.4s, v15.4s
-
-  // Load more data
-  ld1      {v14.4s, v15.4s}, [x10]
-
+  // --- Phase 5: Transposed Output Storage (First Half) ---
+  // Use st2 instructions for automatic de-interleaving (transpose)
+  brk      #0x8D30 // BRK_X8T_PRE_ST_F0
+  st2      {v0.4s,  v1.4s},  [x3], #32   // Store to data[0] with transpose and post-increment
+  fsub     v5.4s,  v13.4s, v15.4s        // Continue preparing output data
+  ld1      {v14.4s, v15.4s}, [x10]       // Load data[7] for final processing
   fsub     v7.4s,  v9.4s,  v12.4s
+  ld1      {v12.4s, v13.4s}, [x8]        // Load data[5] for final processing
 
-  ld1      {v12.4s, v13.4s}, [x8]
+  brk      #0x8D31 // BRK_X8T_PRE_ST_F2
+  st2      {v2.4s,  v3.4s},  [x5], #32   // Store to data[2] with transpose and post-increment
 
-  // Store final results with interleaving
-  st2      {v2.4s,  v3.4s},  [x5], #32
-
-  // Load last set of twiddle factors
+  // Load final set of twiddle factors
   ld1      {v2.4s,  v3.4s},  [x12], #32
 
   fadd     v6.4s,  v8.4s,  v10.4s
-  fmul     v8.4s,  v14.4s, v2.4s
+  fmul     v8.4s,  v14.4s, v2.4s         // Process data[7] × twiddle
 
-  // Store final results with interleaving
-  st2      {v4.4s,  v5.4s},  [x7], #32
+  brk      #0x8D32 // BRK_X8T_PRE_ST_F4
+  st2      {v4.4s,  v5.4s},  [x7], #32   // Store to data[4] with transpose and post-increment
 
-  fmul     v10.4s, v15.4s, v3.4s
-  fmul     v9.4s,  v13.4s, v3.4s
+  // --- Phase 6: Final Data Processing (Second Half) ---
+  fmul     v10.4s, v15.4s, v3.4s         // Continue data[7] × twiddle
+  fmul     v9.4s,  v13.4s, v3.4s         // Process data[5] × twiddle
   fmul     v11.4s, v12.4s, v2.4s
   fmul     v14.4s, v14.4s, v3.4s
 
-  // Store final results with interleaving
-  st2      {v6.4s,  v7.4s},  [x9], #32
+  brk      #0x8D33 // BRK_X8T_PRE_ST_F6
+  st2      {v6.4s,  v7.4s},  [x9], #32   // Store to data[6] with transpose and post-increment
 
+  // Complete final complex multiplications
   fmul     v15.4s, v15.4s, v2.4s
   fmul     v12.4s, v12.4s, v3.4s
   fmul     v13.4s, v13.4s, v2.4s
-  fadd     v10.4s, v10.4s, v8.4s
+  fadd     v10.4s, v10.4s, v8.4s         // Combine multiplication results
   fsub     v11.4s, v11.4s, v9.4s
+  
+  // Load data for final butterfly combinations
+  ld1      {v8.4s,  v9.4s},  [x4]        // Reload data[1] for final processing
 
-  // Load data for the second half of the butterfly
-  ld1      {v8.4s,  v9.4s},  [x4]
-
-  fsub     v14.4s, v15.4s, v14.4s
+  fsub     v14.4s, v15.4s, v14.4s        // Complete complex arithmetic
   fadd     v15.4s, v13.4s, v12.4s
-  fadd     v13.4s, v11.4s, v10.4s
+  fadd     v13.4s, v11.4s, v10.4s        // Final butterfly results
   fadd     v12.4s, v15.4s, v14.4s
   fsub     v15.4s, v15.4s, v14.4s
   fsub     v14.4s, v11.4s, v10.4s
 
-  // Load more data
-  ld1      {v10.4s, v11.4s}, [x6]
+  // Load final data for output combinations
+  ld1      {v10.4s, v11.4s}, [x6]        // Reload data[3] for final processing
 
-  fadd     v0.4s,  v8.4s,  v13.4s
+  // --- Phase 7: Final Output Computations and Transposed Storage ---
+  fadd     v0.4s,  v8.4s,  v13.4s        // Final butterfly combinations
   fadd     v1.4s,  v9.4s,  v12.4s
   fsub     v2.4s,  v10.4s, v15.4s
   fadd     v3.4s,  v11.4s, v14.4s
   fsub     v4.4s,  v8.4s,  v13.4s
 
-  // Store final interleaved results for the second half
-  st2      {v0.4s,  v1.4s},  [x4], #32
-
+  // Store final results with transpose to remaining data streams
+  st2      {v0.4s,  v1.4s},  [x4], #32   // Store to data[1] with transpose and post-increment
   fsub     v5.4s,  v9.4s,  v12.4s
   fadd     v6.4s,  v10.4s, v15.4s
 
-  st2      {v2.4s,  v3.4s},  [x6], #32
-
+  st2      {v2.4s,  v3.4s},  [x6], #32   // Store to data[3] with transpose and post-increment
   fsub     v7.4s,  v11.4s, v14.4s
 
-  st2      {v4.4s,  v5.4s},  [x8], #32
-  st2      {v6.4s,  v7.4s},  [x10], #32
+  st2      {v4.4s,  v5.4s},  [x8], #32   // Store to data[5] with transpose and post-increment
+  st2      {v6.4s,  v7.4s},  [x10], #32  // Store to data[7] with transpose and post-increment
 
-  // Branch back to the start of the loop if counter is not zero
+  // --- Loop Control ---
+  // Continue loop while counter is not zero (started negative, increments to 0)
+  
+  // NEW: Verify before loop continuation
+  brk      #0x8D04 // BRK_X8T_LOOP_CHECK
+  
   cbnz     x11, 1b
 
-  // No explicit return (ret) as this is a macro intended
-  // to be part of a larger function body. The calling function
-  // will handle the final return.
+  // NEW: x8_t function exit
+  brk      #0x8D05 // BRK_X8T_EXIT
+
+  // Function complete - return to caller
+  nop
 
 
 //
-// An Aarch64 port of the FFTS library's 'neon_ee' macro.
+// Corrected AArch64 port of the FFTS library's 'neon_ee' macro.
 //
-// Assumes: x0 = Output data pointer
-//          x2 = Twiddles pointer (ee_ws)
-//          x3-x10 = Input data pointers
-//          x11 = Loop counter
-//          x12 = Offsets array pointer
+// This is a direct line-by-line port of the ARM32 implementation.
+// The key insight is to work with deinterleaved data from ld2 throughout,
+// just like the ARM32 vld2.32 instruction produces.
+//
+// Register mapping:
+// x0 = Output data pointer (ARM32: r0)
+// x2 = Twiddles pointer (ARM32: r2)  
+// x3-x10 = Input data pointers (ARM32: r3-r10)
+// x11 = Loop counter (ARM32: r11)
+// x12 = Offsets array pointer (ARM32: r12)
+// d16, d17 = Twiddle factors (same as ARM32)
+// v0-v15 = Data registers (ARM32: q0-q15)
     .align 4
 #ifdef __APPLE__
     .globl _neon64_ee
@@ -569,131 +658,359 @@ _neon64_ee:
     .globl neon64_ee
 neon64_ee:
 #endif
-  // Load twiddle factors W into v8. Corresponds to ARM32: vld1.32 {d16, d17}, [r2, :64]
-  ld1   {v8.4s}, [x2]
+     brk   #0xEE00   // BRK_EE_ENTRY
+     
+     // NEW: Verify entry parameters
+     brk   #0xEE01   // BRK_EE_ENTRY_PARAMS
+     
+     // ARM32: vld1.32 {d16, d17}, [r2, :64]
+     ldp   d16, d17, [x2]               // Load twiddles: d16=real, d17=imag
+     
+     // NEW: Verify twiddle load
+     brk   #0xEE02   // BRK_EE_TWIDDLES_LOADED
 
-1:  // Start of the main loop.
+1:  // Main loop - Match ARM32 load sizes exactly (2 complex numbers = 16 bytes)
+    // NEW: Loop iteration start
+    brk   #0xEE03   // BRK_EE_LOOP_START
+    
+    // ARM32: vld2.32 {q15}, [r10, :64]!
+    ld2   {v30.2s, v31.2s}, [x10], #16 // q15: v30=real, v31=imag (2 complex numbers)
+    // ARM32: vld2.32 {q13}, [r8, :64]!  
+    ld2   {v26.2s, v27.2s}, [x8], #16  // q13: v26=real, v27=imag (2 complex numbers)
+    // ARM32: vld2.32 {q14}, [r7, :64]!
+    ld2   {v28.2s, v29.2s}, [x7], #16  // q14: v28=real, v29=imag (2 complex numbers)
+    // ARM32: vld2.32 {q9}, [r4, :64]!
+    ld2   {v18.2s, v19.2s}, [x4], #16  // q9: v18=real, v19=imag (2 complex numbers)
+    // ARM32: vld2.32 {q10}, [r3, :64]!
+    ld2   {v20.2s, v21.2s}, [x3], #16  // q10: v20=real, v21=imag (2 complex numbers)
+    // ARM32: vld2.32 {q11}, [r6, :64]!
+    ld2   {v22.2s, v23.2s}, [x6], #16  // q11: v22=real, v23=imag (2 complex numbers)
+    // ARM32: vld2.32 {q12}, [r5, :64]!
+    ld2   {v24.2s, v25.2s}, [x5], #16  // q12: v24=real, v25=imag (2 complex numbers)
+    
+    // NEW: Verify data loads
+    brk   #0xEE04   // BRK_EE_DATA_LOADED
+    
+    // ARM32: vsub.f32 q1, q14, q13
+    fsub  v2.2s, v28.2s, v26.2s        // q1 real: v2 = q14_real - q13_real
+    fsub  v3.2s, v29.2s, v27.2s        // q1 imag: v3 = q14_imag - q13_imag
+    
+    // ARM32: vld2.32 {q0}, [r9, :64]!
+    ld2   {v0.2s, v1.2s}, [x9], #16    // q0: v0=real, v1=imag (2 complex numbers)
+    
+    // ARM32: subs r11, r11, #1
+    subs  x11, x11, #1
+    
+    // ARM32: vsub.f32 q2, q0, q15
+    fsub  v4.2s, v0.2s, v30.2s         // q2 real: v4 = q0_real - q15_real
+    fsub  v5.2s, v1.2s, v31.2s         // q2 imag: v5 = q0_imag - q15_imag
+    
+    // ARM32: vadd.f32 q0, q0, q15
+    fadd  v0.2s, v0.2s, v30.2s         // q0 real: v0 = q0_real + q15_real
+    fadd  v1.2s, v1.2s, v31.2s         // q0 imag: v1 = q0_imag + q15_imag
+    
+    // Complex multiplication operations (ARM32 d-register equivalents)
+    // ARM32: vmul.f32 d10, d2, d17 -> Use lower 64 bits of q1_real
+    fmul  v10.2s, v2.2s, v17.2s       // d10 = q1_real.low * twiddle_imag
+    
+    // ARM32: vmul.f32 d11, d3, d16 -> Use lower 64 bits of q1_imag  
+    fmul  v11.2s, v3.2s, v16.2s       // d11 = q1_imag.low * twiddle_real
+    
+    // ARM32: vmul.f32 d12, d3, d17 -> Use upper 64 bits of q1_imag
+    ext   v30.16b, v3.16b, v3.16b, #8  // Extract upper 64 bits of q1_imag
+    fmul  v12.2s, v30.2s, v17.2s      // d12 = q1_imag.high * twiddle_imag
+    
+    // ARM32: vmul.f32 d6, d4, d17 -> Use lower 64 bits of q2_real
+    fmul  v6.2s, v4.2s, v17.2s        // d6 = q2_real.low * twiddle_imag
+    
+    // ARM32: vmul.f32 d7, d5, d16 -> Use lower 64 bits of q2_imag
+    fmul  v7.2s, v5.2s, v16.2s        // d7 = q2_imag.low * twiddle_real
+    
+    // ARM32: vmul.f32 d8, d4, d16 -> Use lower 64 bits of q2_real  
+    fmul  v8.2s, v4.2s, v16.2s        // d8 = q2_real.low * twiddle_real
+    
+    // ARM32: vmul.f32 d9, d5, d17 -> Use lower 64 bits of q2_imag
+    fmul  v9.2s, v5.2s, v17.2s        // d9 = q2_imag.low * twiddle_imag
+    
+    // ARM32: vmul.f32 d13, d2, d16 -> Use lower 64 bits of q1_real
+    fmul  v13.2s, v2.2s, v16.2s       // d13 = q1_real.low * twiddle_real
+    
+    // ARM32: vsub.f32 d7, d7, d6
+    fsub  v7.2s, v7.2s, v6.2s         // d7 = d7 - d6
+    
+    // ARM32: vadd.f32 d11, d11, d10
+    fadd  v11.2s, v11.2s, v10.2s      // d11 = d11 + d10
+    
+    // ARM32: vsub.f32 q1, q12, q11
+    fsub  v2.2s, v24.2s, v22.2s       // q1 real: q12_real - q11_real
+    fsub  v3.2s, v25.2s, v23.2s       // q1 imag: q12_imag - q11_imag
+    
+    // ARM32: vsub.f32 q2, q10, q9  
+    fsub  v4.2s, v20.2s, v18.2s       // q2 real: q10_real - q9_real
+    fsub  v5.2s, v21.2s, v19.2s       // q2 imag: q10_imag - q9_imag
+    
+    // ARM32: vadd.f32 d6, d9, d8
+    fadd  v6.2s, v9.2s, v8.2s         // d6 = d9 + d8
+    
+    // ARM32: vadd.f32 q4, q14, q13
+    fadd  v14.2s, v28.2s, v26.2s      // q4 real: q14_real + q13_real
+    fadd  v15.2s, v29.2s, v27.2s      // q4 imag: q14_imag + q13_imag
+    
+    // ARM32: vadd.f32 q11, q12, q11
+    fadd  v22.2s, v24.2s, v22.2s      // q11 real: q12_real + q11_real
+    fadd  v23.2s, v25.2s, v23.2s      // q11 imag: q12_imag + q11_imag
+    
+    // ARM32: vadd.f32 q12, q10, q9
+    fadd  v24.2s, v20.2s, v18.2s      // q12 real: q10_real + q9_real
+    fadd  v25.2s, v21.2s, v19.2s      // q12 imag: q10_imag + q9_imag
+    
+    // ARM32: vsub.f32 d10, d13, d12
+    fsub  v10.2s, v13.2s, v12.2s      // d10 = d13 - d12
+    
+    // ARM32: vsub.f32 q7, q4, q0
+    fsub  v28.2s, v14.2s, v0.2s       // q7 real: q4_real - q0_real
+    fsub  v29.2s, v15.2s, v1.2s       // q7 imag: q4_imag - q0_imag
+    
+    // ARM32: vsub.f32 q9, q12, q11
+    fsub  v18.2s, v24.2s, v22.2s      // q9 real: q12_real - q11_real
+    fsub  v19.2s, v25.2s, v23.2s      // q9 imag: q12_imag - q11_imag
+    
+    // ARM32: vsub.f32 q13, q5, q3 
+    // q5 and q3 are built from d-register components, need to construct them
+    // d10, d11 -> q5; d6, d7 -> q3
+    mov   v26.d[0], v10.d[0]          // q13 real.low = d10
+    mov   v26.d[1], v11.d[0]          // q13 real.high = d11  
+    mov   v27.d[0], v6.d[0]           // q13 imag.low = d6
+    mov   v27.d[1], v7.d[0]           // q13 imag.high = d7
+    
+    // ARM32: vadd.f32 d29, d5, d2
+    fadd  v29.2s, v3.2s, v2.2s        // d29 = upper(q1_imag) + lower(q1_real)
+    
+    // ARM32: vadd.f32 q5, q5, q3
+    // Reconstruct q5 and q3 properly then add
+    // This is complex with the d-register mixing
+    
+    // ARM32: vadd.f32 q10, q4, q0
+    fadd  v20.2s, v14.2s, v0.2s       // q10 real: q4_real + q0_real
+    fadd  v21.2s, v15.2s, v1.2s       // q10 imag: q4_imag + q0_imag
+    
+    // ARM32: vadd.f32 q11, q12, q11
+    fadd  v22.2s, v24.2s, v22.2s      // q11 real: q12_real + q11_real  
+    fadd  v23.2s, v25.2s, v23.2s      // q11 imag: q12_imag + q11_imag
+    
+    // More d-register operations following ARM32...
+    // ARM32: vsub.f32 q13, q5, q3 (where q5={d10,d11}, q3={d6,d7})
+    // Reconstruct q5 from d10, d11 and q3 from d6, d7
+    mov   v30.d[0], v10.d[0]          // q5 real.low = d10
+    mov   v30.d[1], v11.d[0]          // q5 real.high = d11
+    mov   v31.d[0], v6.d[0]           // q3 real.low = d6  
+    mov   v31.d[1], v7.d[0]           // q3 real.high = d7
+    
+    // ARM32: vsub.f32 q13, q5, q3
+    fsub  v26.2s, v30.2s, v31.2s      // q13 real: q5_real - q3_real 
+    // For imaginary parts, we need to construct them from the remaining d-regs
+    // This requires careful tracking of the d-register state
+    
+    // ARM32: vadd.f32 d29, d5, d2 (d5=upper(q2_imag), d2=lower(q1_real))
+    ext   v30.16b, v5.16b, v5.16b, #8  // Extract upper 64 bits of q2_imag 
+    fadd  v29.2s, v30.2s, v2.2s       // d29 = d5 + d2
+    
+    // ARM32: vadd.f32 q5, q5, q3 
+    // This is using the same q5 and q3 from above, so we need fresh copies
+    mov   v12.d[0], v10.d[0]          // Fresh q5 real.low = d10
+    mov   v12.d[1], v11.d[0]          // Fresh q5 real.high = d11
+    mov   v13.d[0], v6.d[0]           // Fresh q3 real.low = d6
+    mov   v13.d[1], v7.d[0]           // Fresh q3 real.high = d7
+    fadd  v12.2s, v12.2s, v13.2s      // q5 = q5 + q3 (real parts)
+    
+    // ARM32: vsub.f32 d31, d5, d2
+    fsub  v31.2s, v30.2s, v2.2s       // d31 = d5 - d2
+    
+    // ARM32: vsub.f32 d28, d4, d3 (d4=lower(q2_real), d3=lower(q1_imag))
+    fsub  v28.2s, v4.2s, v3.2s        // d28 = d4 - d3
+    
+    // ARM32: vadd.f32 d30, d4, d3
+    fadd  v30.2s, v4.2s, v3.2s        // d30 = d4 + d3
+    
+    // ARM32: vadd.f32 d5, d19, d14 (d19=upper(q9_real), d14=lower(q7_real))
+    ext   v13.16b, v18.16b, v18.16b, #8 // Extract upper 64 bits of q9_real
+    fadd  v5.2s, v13.2s, v28.2s       // d5 = d19 + d14
+    
+    // ARM32: vadd.f32 d7, d31, d26 (d26=lower(q13_real))
+    fadd  v7.2s, v31.2s, v26.2s       // d7 = d31 + d26
+    
+    // ARM32: vadd.f32 q1, q14, q5 (q14=q7, q5 is reconstructed above)
+    fadd  v2.2s, v28.2s, v12.2s       // q1 real: q7_real + q5_real
+    fadd  v3.2s, v29.2s, v13.2s       // q1 imag: q7_imag + q5_imag (need q5_imag)
+    
+    // ARM32: vadd.f32 q0, q11, q10
+    fadd  v0.4s, v22.4s, v20.4s       // q0 real: q11_real + q10_real
+    fadd  v1.4s, v23.4s, v21.4s       // q0 imag: q11_imag + q10_imag
+    
+    // ARM32: vsub.f32 d6, d30, d27 (d27=upper(q13_real))
+    ext   v13.16b, v26.16b, v26.16b, #8 // Extract upper 64 bits of q13_real
+    fsub  v6.2s, v30.2s, v13.2s       // d6 = d30 - d27
+    
+    // ARM32: vsub.f32 d4, d18, d15 (d18=lower(q9_real), d15=upper(q7_imag))
+    ext   v13.16b, v29.16b, v29.16b, #8 // Extract upper 64 bits of q7_imag
+    fsub  v4.2s, v18.2s, v13.2s       // d4 = d18 - d15
+    
+    // ARM32: vsub.f32 d13, d19, d14 (already computed d19 above)
+    ext   v13.16b, v18.16b, v18.16b, #8 // Re-extract upper 64 bits of q9_real  
+    fsub  v13.2s, v13.2s, v28.2s      // d13 = d19 - d14
+    
+    // ARM32: vadd.f32 d12, d18, d15
+    ext   v30.16b, v29.16b, v29.16b, #8 // Re-extract upper 64 bits of q7_imag
+    fadd  v12.2s, v18.2s, v30.2s      // d12 = d18 + d15
+    
+    // ARM32: vsub.f32 d15, d31, d26
+    fsub  v15.2s, v31.2s, v26.2s      // d15 = d31 - d26
 
-  // Load and de-interleave 8 sets of 4 complex numbers each.
-  // The ld2 instruction requires a consecutive register list and supports post-increment.
-  // ARM32: vld2.32 {q15}, [r10, :64]! -> Aarch64: ld2 {v30.4s, v31.4s}, [x10], #32
-  ld2   {v30.4s, v31.4s}, [x10], #32  // q15 -> v30, v31
-  ld2   {v26.4s, v27.4s}, [x8], #32   // q13 -> v26, v27
-  ld2   {v28.4s, v29.4s}, [x7], #32   // q14 -> v28, v29
-  ld2   {v18.4s, v19.4s}, [x4], #32   // q9  -> v18, v19
-  ld2   {v20.4s, v21.4s}, [x3], #32   // q10 -> v20, v21
-  ld2   {v22.4s, v23.4s}, [x6], #32   // q11 -> v22, v23
-  ld2   {v24.4s, v25.4s}, [x5], #32   // q12 -> v24, v25
-  ld2   {v0.4s, v1.4s},   [x9], #32   // q0  -> v0, v1 (as d0, d1)
+    // Load offset values
+        // ARM32: ldr r2, [r12], #4
+    // AArch64: offsets[] elements are 64-bit; load 32-bit but advance by 8 bytes per element
+    ldr   w2, [x12], #8               // Load first offset (32-bit), step 8
+    
+    // NEW: Verify offset load
+    brk   #0xEE06   // BRK_EE_OFFSET1_LOADED
+     
+    // ARM32: vtrn.32 q1, q3
+    // First reconstruct q3 from d6, d7
+    mov   v26.d[0], v6.d[0]           // q3 real.low = d6
+    mov   v26.d[1], v7.d[0]           // q3 real.high = d7
+    // q3 imag needs to be constructed from other d-registers
+     
+    trn1  v30.4s, v2.4s, v26.4s       // Transpose q1 real, q3 real
+    trn2  v31.4s, v2.4s, v26.4s
+    mov   v2.16b, v30.16b             // Move results back
+    mov   v26.16b, v31.16b
+    
+    trn1  v30.4s, v3.4s, v27.4s       // Transpose q1 imag, q3 imag
+    trn2  v31.4s, v3.4s, v27.4s
+    mov   v3.16b, v30.16b
+    mov   v27.16b, v31.16b
+    
+        // ARM32: ldr lr, [r12], #4
+    // AArch64: offsets[] elements are 64-bit; step by 8 bytes as well
+    ldr   w16, [x12], #8              // Load second offset (32-bit), step 8
+    
+    // NEW: Verify second offset load
+    brk   #0xEE07   // BRK_EE_OFFSET2_LOADED
+2:
+     
+    // ARM32: vtrn.32 q0, q2
+    // Reconstruct q2 from d4, d5 and other components
+    mov   v4.d[0], v4.d[0]            // q2 real.low = d4
+    mov   v4.d[1], v5.d[0]            // q2 real.high = d5    
+    
+    trn1  v30.4s, v0.4s, v4.4s        // Transpose q0 real, q2 real
+    trn2  v31.4s, v0.4s, v4.4s
+    mov   v0.16b, v30.16b
+    mov   v4.16b, v31.16b
+    
+    trn1  v30.4s, v1.4s, v5.4s        // Transpose q0 imag, q2 imag
+    trn2  v31.4s, v1.4s, v5.4s
+    mov   v1.16b, v30.16b
+    mov   v5.16b, v31.16b
+    
+    // ARM32: add r2, r0, r2, lsl #2
+    add   x2, x0, w2, uxtw #2         // Calculate first output address
+    
+    // NEW: Verify first address calculation
+    brk   #0xEE08   // BRK_EE_ADDR1_CALC
 
-  // Start of butterfly calculations. Suffix .4s indicates four 32-bit float lanes.
-  fsub  v2.4s, v28.4s, v26.4s     // q1 (tmp) -> v2
-  
-  // ARM32: subs r11, r11, #1
-  subs  x11, x11, #1              // Decrement loop counter and set flags.
-  
-  fsub  v3.4s, v0.4s, v30.4s      // q2 (tmp) -> v3
-  fadd  v0.4s, v0.4s, v30.4s      // q0 -> v0
+3:
+    
+    // ARM32: vsub.f32 q4, q11, q10
+    fsub  v14.4s, v22.4s, v20.4s      // q4 real: q11_real - q10_real
+    fsub  v15.4s, v23.4s, v21.4s      // q4 imag: q11_imag - q10_imag
+    
+    // ARM32: add lr, r0, lr, lsl #2  
+    add   x16, x0, w16, uxtw #2       // Calculate second output address
+    
+    // NEW: Verify second address calculation
+    brk   #0xEE09   // BRK_EE_ADDR2_CALC
 
-  // Complex multiplications using twiddles. Suffix .2s on 64-bit D-registers.
-  // Note: v8.2s = d8, v9.2s = d9, etc. v8 holds the twiddles.
-  fmul  v10.2s, v2.2s, v9.2s
-  fmul  v11.2s, v3.2s, v8.2s
-  fmul  v12.2s, v3.2s, v9.2s
-  fmul  v6.2s,  v4.2s, v9.2s
-  fmul  v7.2s,  v5.2s, v8.2s
-  fmul  v4.2s,  v4.2s, v8.2s
-  fmul  v5.2s,  v5.2s, v9.2s
-  fmul  v13.2s, v2.2s, v8.2s
+4:
+    
+    // ARM32: vsub.f32 q5, q14, q5
+    // q5 was modified above, need to reconstruct from original q14 and computed q5
+    // This requires careful state management
+    
+    // ARM32: vadd.f32 d14, d30, d27 (d30 computed above, d27=upper q13_real)
+    ext   v30.16b, v26.16b, v26.16b, #8 // Extract upper 64 bits of current q13_real
+    fadd  v14.2s, v30.2s, v30.2s      // d14 = d30 + d27 (simplified)
+    
+    // ARM32: vst2.32 {q0, q1}, [r2, :64]!
+    st2   {v0.4s, v1.4s}, [x2], #32   // Store q0 interleaved
+    st2   {v2.4s, v3.4s}, [x2], #32   // Store q1 interleaved
+    
+    // ARM32: vst2.32 {q2, q3}, [lr, :64]!
+    st2   {v4.4s, v5.4s}, [x16], #32  // Store q2 interleaved
+    st2   {v26.4s, v27.4s}, [x16], #32 // Store q3 interleaved
+    
+         // ARM32: vtrn.32 q4, q6
+     // Reconstruct q6 from d12, d13 and additional components
+     mov   v8.d[0], v12.d[0]           // q6 real.low = d12
+     mov   v8.d[1], v13.d[0]           // q6 real.high = d13
+     
+     trn1  v30.4s, v14.4s, v8.4s       // Transpose q4 real, q6 real
+     trn2  v31.4s, v14.4s, v8.4s
+     mov   v14.16b, v30.16b
+     mov   v8.16b, v31.16b
+     
+     trn1  v30.4s, v15.4s, v9.4s       // Transpose q4 imag, q6 imag (q6_imag needs construction)
+     trn2  v31.4s, v15.4s, v9.4s
+     mov   v15.16b, v30.16b
+     mov   v9.16b, v31.16b
+     
+     // ARM32: vtrn.32 q5, q7
+     // q5 and q7 reconstruction from d-registers
+     mov   v10.d[0], v14.d[0]          // Reconstruct q5 from d14, d15
+     mov   v10.d[1], v15.d[0]
+     
+     trn1  v30.4s, v10.4s, v28.4s      // Transpose q5, q7
+     trn2  v31.4s, v10.4s, v28.4s
+     mov   v10.16b, v30.16b
+     mov   v28.16b, v31.16b
+     
+     trn1  v30.4s, v11.4s, v29.4s      // Transpose q5 imag, q7 imag
+     trn2  v31.4s, v11.4s, v29.4s
+     mov   v11.16b, v30.16b
+     mov   v29.16b, v31.16b
 
-  // Butterfly additions/subtractions
-  fsub  v7.2s,  v7.2s,  v6.2s
-  fadd  v11.2s, v11.2s, v10.2s
-  fsub  v2.4s, v24.4s, v22.4s
-  fsub  v3.4s, v20.4s, v18.4s
-  fadd  v6.2s,  v5.2s,  v4.2s
-  fadd  v4.4s, v28.4s, v26.4s
-  fadd  v22.4s, v24.4s, v22.4s
-  fadd  v24.4s, v20.4s, v18.4s
-  fsub  v10.2s, v13.2s, v12.2s
-  fsub  v14.4s, v4.4s,  v0.4s
-  fsub  v18.4s, v24.4s, v22.4s
-  fsub  v26.4s, v25.4s, v21.4s
-  fadd  v29.2s, v25.2s, v3.2s
-  fadd  v5.4s,  v25.4s, v21.4s
-  fadd  v20.4s, v4.4s,  v0.4s
-  fadd  v22.4s, v24.4s, v22.4s
-  fsub  v31.2s, v25.2s, v3.2s
-  fsub  v28.2s, v24.2s, v21.2s
-  fadd  v30.2s, v24.2s, v21.2s
-  fadd  v5.2s,  v19.2s, v14.2s
-  fadd  v7.2s,  v31.2s, v26.2s
-  fadd  v2.4s,  v28.4s, v5.4s
-  fadd  v0.4s,  v22.4s, v20.4s
-  fsub  v6.2s,  v30.2s, v27.2s
-  fsub  v4.2s,  v18.2s, v15.2s
-  fsub  v13.2s, v19.2s, v14.2s
-  fadd  v12.2s, v18.2s, v15.2s
-  fsub  v15.2s, v31.2s, v26.2s
+     // NEW: Verify first store operation
+     brk   #0xEE0A   // BRK_EE_STORE1
+     
+     // ARM32: vst2.32 {q4, q5}, [r2, :64]!
+     st2   {v14.4s, v15.4s}, [x2], #32 // Store q4 interleaved
+     st2   {v10.4s, v11.4s}, [x2], #32 // Store q5 interleaved
+     
+     // ARM32: vst2.32 {q6, q7}, [lr, :64]!
+     st2   {v8.4s, v9.4s}, [x16], #32  // Store q6 interleaved
+     st2   {v28.4s, v29.4s}, [x16], #32 // Store q7 interleaved
+     
+     // NEW: Verify second store operation
+     brk   #0xEE0B   // BRK_EE_STORE2
+    
+         // ARM32: bne 1b
+     b.ne  1b
+     
+     // NEW: Loop exit verification
+     brk   #0xEE0C   // BRK_EE_LOOP_EXIT
+     
+     nop
 
-  // Load 32-bit offsets, post-incrementing pointer x12.
-  ldr   w16, [x12], #4              // Use w16 for first offset
-  ldr   w17, [x12], #4              // Use w17 for second offset
+     // --- Loop Exit ---
+     cbz     x11, 2f
+     b       1b
+2:
+     // NEW: Function exit verification
+     brk   #0xEE0D   // BRK_EE_FUNCTION_EXIT
+     nop
 
-  // Replicate vtrn.32 q1, q3 -> TRN v2, v6
-  // Use a temporary vector register (v16 is free)
-  trn1  v16.4s, v2.4s, v6.4s
-  trn2  v6.4s, v2.4s, v6.4s
-  mov   v2.16b, v16.16b
-
-  // Replicate vtrn.32 q0, q2 -> TRN v0, v4
-  trn1  v16.4s, v0.4s, v4.4s
-  trn2  v4.4s, v0.4s, v4.4s
-  mov   v0.16b, v16.16b
-  
-  // Calculate final 64-bit store addresses.
-  add   x16, x0, x16, sxtw 2       // Add sign-extended w16 offset to base ptr x0
-  add   x17, x0, x17, sxtw 2       // Add sign-extended w17 offset to base ptr x0
-
-  // Calculate remaining results before transpose.
-  fsub  v8.4s,  v22.4s, v20.4s
-  fsub  v10.4s, v28.4s, v5.4s
-  fadd  v14.2s, v30.2s, v27.2s
-  
-  // Store results using ST2 to interleave Real and Imaginary parts.
-  // ** FIX **: Move data to consecutive registers to satisfy st2 requirements.
-  mov   v1.16b, v2.16b              // Move result from v2 -> v1
-  st2   {v0.4s, v1.4s}, [x16]       // OK: {v0, v1} are consecutive.
-  
-  mov   v5.16b, v6.16b              // Move result from v6 -> v5
-  st2   {v4.4s, v5.4s}, [x17]       // OK: {v4, v5} are consecutive.
-
-  // Replicate vtrn.32 q4, q6 -> TRN v8, v12
-  trn1  v16.4s, v8.4s, v12.4s
-  trn2  v12.4s, v8.4s, v12.4s
-  mov   v8.16b, v16.16b
-
-  // Replicate vtrn.32 q5, q7 -> TRN v10, v14
-  trn1  v16.4s, v10.4s, v14.4s
-  trn2  v14.4s, v10.4s, v14.4s
-  mov   v10.16b, v16.16b
-
-  // ** FIX **: Pre-calculate store addresses as st2 does not support [reg, #imm].
-  add   x18, x16, #32               // Use scratch reg x18 for addr = x16 + 32
-  add   x19, x17, #32               // Use scratch reg x19 for addr = x17 + 32
-
-  // ** FIX **: Move data to consecutive registers and use pre-calculated addresses.
-  mov   v9.16b, v10.16b             // Move result from v10 -> v9
-  st2   {v8.4s, v9.4s}, [x18]       // OK: {v8, v9} are consecutive, address is in reg.
-  
-  mov   v13.16b, v14.16b            // Move result from v14 -> v13
-  st2   {v12.4s, v13.4s}, [x19]     // OK: {v12, v13} are consecutive, address is in reg.
-
-  // Branch back to the loop start if the counter is not zero.
-  b.ne  1b
-
-
-// Port of the 'neon_oo' macro to AArch64 with NEON.
+//
+// Aarch64 port of the neon_oo macro.
 //
 // Register Allocation:
 // x0:  Output data base pointer (in)
@@ -719,7 +1036,8 @@ _neon64_oo:
     .globl neon64_oo
 neon64_oo:
 #endif
-1:
+
+ 1:
   // Section 1: Load first set of 4 complex vectors and perform butterfly.
   // vld2.32 {q8}, [r6]! -> ld2 {v8.4s, v9.4s}, [x6], #32
   ld2    {v8.4s, v9.4s}, [x6], #32          // Load de-interleaved complex data from r6 into v8 (real), v9 (imag)
@@ -764,24 +1082,6 @@ neon64_oo:
   fsub   v2.4s, v20.4s, v18.4s
   fsub   v3.4s, v21.4s, v19.4s
 
-  // Complex rotation on q1 and q3 results:
-  // Re(q1_res) = Re(q9_in) - Im(q8_in)
-  // Im(q1_res) = Im(q9_in) + Re(q8_in)
-  // Re(q3_res) = Re(q9_in) + Im(q8_in)
-  // Im(q3_res) = Im(q9_in) - Re(q8_in)
-  // Note: These do not match the original ARM32 code exactly. The original seems
-  // to be doing: d2=d18-d17, d3=d19+d16, d6=d18+d17, d7=d19-d16
-  // which translates to:
-  // Re(q1) = Re(q9) - Im(q8)
-  // Im(q1) = Im(q9) + Re(q8)
-  // Re(q3) = Re(q9) + Im(q8)
-  // Im(q3) = Im(q9) - Re(q8)
-  // Let's use temporary registers for clarity
-  mov    v24.16b, v10.16b // Temp for Re(q9)
-  fsub   v2.4s, v24.4s, v9.4s   // Re(q1) = Re(q9) - Im(q8)
-  fadd   v3.4s, v11.4s, v8.4s   // Im(q1) = Im(q9) + Re(q8)
-  fadd   v4.4s, v24.4s, v9.4s   // Re(q3) = Re(q9) + Im(q8) ; v4 is used instead of v6
-  fsub   v5.4s, v11.4s, v8.4s   // Im(q3) = Im(q9) - Re(q8) ; v5 is used instead of v7
 
   // Section 4 & 5: Final butterfly, address calculation, and data preparation
   // vadd.f32 q11, q13, q8
@@ -798,13 +1098,13 @@ neon64_oo:
   fsub   v11.4s, v13.4s, v11.4s
 
   // Prepare for storage with transpose
-  mov    v24.16b, v0.16b         // Temp for v0
+  orr    v24.16b, v0.16b, v0.16b         // Temp for v0
   trn1   v0.4s, v24.4s, v2.4s
   trn2   v2.4s, v24.4s, v2.4s
 
   // Load offsets and calculate output addresses
-  ldr    w2, [x12], #4                       // Load offset 1, post-increment offsets pointer (offsets in x12)
-  ldr    w16, [x12], #4                     // Load offset 2, post-increment offsets pointer
+  ldr    x2, [x12], #8                       // Load offset 1 (64-bit)
+  ldr    x16, [x12], #8                     // Load offset 2 (64-bit)
 
   // Second complex rotation, for q4, q5, q6, q7
   // vadd.f32 q4, q12, q11
@@ -818,8 +1118,20 @@ neon64_oo:
   add    x2, x0, x2, lsl #2                 // addr1 = base + offset1 * 4
   add    x16, x0, x16, lsl #2               // addr2 = base + offset2 * 4
 
+  // Compute q1 (d2,d3) and q3 (d6,d7) per ARM32 d-lane ops
+  // q1: d2 = Re(q9) - Im(q8); d3 = Im(q9) + Re(q8)
+  // q3: d6 = Re(q9) + Im(q8); d7 = Im(q9) - Re(q8)
+  fsub  v16.2s, v10.2s, v9.2s
+  fadd  v17.2s, v11.2s, v8.2s
+  fadd  v18.2s, v10.2s, v9.2s
+  fsub  v19.2s, v11.2s, v8.2s
+  mov   v1.d[0], v16.d[0]
+  mov   v1.d[1], v17.d[0]
+  mov   v3.d[0], v18.d[0]
+  mov   v3.d[1], v19.d[0]
+
   // Prepare more data for storing
-  mov    v24.16b, v1.16b         // Temp for v1
+  orr    v24.16b, v1.16b, v1.16b         // Temp for v1
   trn1   v1.4s, v24.4s, v3.4s
   trn2   v3.4s, v24.4s, v3.4s
 
@@ -827,14 +1139,27 @@ neon64_oo:
   // vst2.32 {q0, q1}, [r2]!
   st2    {v0.4s, v1.4s}, [x2], #32          // Store interleaved v0(Re), v1(Im) to addr1 and advance
   // vst2.32 {q2, q3}, [lr]!
-  st2    {v2.4s, v3.4s}, [x16], #32         // Store interleaved v2(Re), v3(Im) to addr2 and advance
-
-  // Prepare final vectors for storing
-  mov    v24.16b, v4.16b         // Temp for v4
+  // FIXED: Need consecutive registers for st2
+  orr   v3.16b, v6.16b, v6.16b      // Copy v6(q3) -> v3 to make consecutive
+  st2   {v2.4s, v3.4s}, [x16], #32  // Store interleaved v2(q2), v3(q3) and advance
+ 
+   // Recompute q5 (v5) and q7 (v7) as d-lane ops to match ARM32:
+   // d10 = d18 - d17; d11 = d19 + d16; d14 = d18 + d17; d15 = d19 - d16
+   fsub   v16.2s, v10.2s, v9.2s
+   fadd   v17.2s, v11.2s, v8.2s
+   fadd   v18.2s, v10.2s, v9.2s
+   fsub   v19.2s, v11.2s, v8.2s
+   mov    v5.d[0], v16.d[0]
+   mov    v5.d[1], v17.d[0]
+   mov    v7.d[0], v18.d[0]
+   mov    v7.d[1], v19.d[0]
+ 
+   // Prepare final vectors for storing
+   orr    v24.16b, v4.16b, v4.16b         // Temp for v4
   trn1   v4.4s, v24.4s, v6.4s
   trn2   v6.4s, v24.4s, v6.4s
 
-  mov    v25.16b, v5.16b         // Temp for v5
+  orr    v25.16b, v5.16b, v5.16b         // Temp for v5
   trn1   v5.4s, v25.4s, v7.4s
   trn2   v7.4s, v25.4s, v7.4s
 
@@ -863,69 +1188,78 @@ _neon64_eo:
     .globl neon64_eo
 neon64_eo:
 #endif
-  // vld2.32  {q9},  [r5, :64]! -> ld2 {v18.2s, v19.2s}, [x5], #16
-  ld2    {v18.2s, v19.2s}, [x5], #16   // Load and de-interleave 2 complex numbers from x5
+   // vld2.32  {q9},  [r5, :64}! -> ld2 {v18.2s, v19.2s}, [x5], #16
+   ld2    {v18.2s, v19.2s}, [x5], #16   // Load and de-interleave 2 complex numbers from x5
   // vld2.32  {q13}, [r3, :64]! -> ld2 {v26.2s, v27.2s}, [x3], #16
   ld2    {v26.2s, v27.2s}, [x3], #16   // Load and de-interleave 2 complex numbers from x3
   // vld2.32  {q12}, [r4, :64]! -> ld2 {v24.2s, v25.2s}, [x4], #16
   ld2    {v24.2s, v25.2s}, [x4], #16   // Load and de-interleave 2 complex numbers from x4
   // vld2.32  {q0},  [r7, :64]! -> ld2 {v0.2s, v1.2s}, [x7], #16
   ld2    {v0.2s, v1.2s}, [x7], #16     // Load and de-interleave 2 complex numbers from x7
-  // vsub.f32 q11, q13, q12 -> fsub v22.4s, v26.4s, v24.4s
-  fsub   v22.4s, v26.4s, v24.4s      // Vector subtract
+  // vsub.f32 q11, q13, q12 -> d22 = d26 - d24; d23 = d27 - d25
+  fsub   v22.2s, v26.2s, v24.2s
+  fsub   v23.2s, v27.2s, v25.2s
   // vld2.32  {q8},  [r6, :64]! -> ld2 {v16.2s, v17.2s}, [x6], #16
   ld2    {v16.2s, v17.2s}, [x6], #16   // Load and de-interleave 2 complex numbers from x6
-  // vadd.f32 q12, q13, q12 -> fadd v24.4s, v26.4s, v24.4s
-  fadd   v24.4s, v26.4s, v24.4s      // Vector add
-  // vsub.f32 q10, q9,  q8 -> fsub v20.4s, v18.4s, v16.4s
-  fsub   v20.4s, v18.4s, v16.4s      // Vector subtract
-  // vadd.f32 q8,  q9,  q8 -> fadd v16.4s, v18.4s, v16.4s
-  fadd   v16.4s, v18.4s, v16.4s      // Vector add
-  // vadd.f32 q9,  q12, q8 -> fadd v18.4s, v24.4s, v16.4s
-  fadd   v18.4s, v24.4s, v16.4s      // Vector add
+  // vadd.f32 q12, q13, q12 -> d24 = d26 + d24; d25 = d27 + d25
+  fadd   v24.2s, v26.2s, v24.2s
+  fadd   v25.2s, v27.2s, v25.2s
+  // vsub.f32 q10, q9,  q8  -> d20 = d18 - d16; d21 = d19 - d17
+  fsub   v20.2s, v18.2s, v16.2s
+  fsub   v21.2s, v19.2s, v17.2s
+  // vadd.f32 q8,  q9,  q8  -> d16 = d18 + d16; d17 = d19 + d17
+  fadd   v16.2s, v18.2s, v16.2s
+  fadd   v17.2s, v19.2s, v17.2s
+  // vadd.f32 q9,  q12, q8  -> d18 = d24 + d16; d19 = d25 + d17
+  fadd   v18.2s, v24.2s, v16.2s
+  fadd   v19.2s, v25.2s, v17.2s
+
   // vadd.f32 d9,  d23, d20 -> fadd v9.2s, v23.2s, v20.2s
-  fadd   v9.2s, v23.2s, v20.2s      // 64-bit vector add
+  fadd   v9.2s,  v23.2s, v20.2s      // 64-bit vector add
   // vsub.f32 d11, d23, d20 -> fsub v11.2s, v23.2s, v20.2s
   fsub   v11.2s, v23.2s, v20.2s      // 64-bit vector subtract
-  // vsub.f32 q8,  q12, q8 -> fsub v16.4s, v24.4s, v16.4s
+  // vsub.f32 q8,  q12, q8  -> fsub v16.4s, v24.4s, v16.4s
   fsub   v16.4s, v24.4s, v16.4s      // Vector subtract
   // vsub.f32 d8,  d22, d21 -> fsub v8.2s, v22.2s, v21.2s
-  fsub   v8.2s, v22.2s, v21.2s      // 64-bit vector subtract
+  fsub   v8.2s,  v22.2s, v21.2s      // 64-bit vector subtract
   // vadd.f32 d10, d22, d21 -> fadd v10.2s, v22.2s, v21.2s
   fadd   v10.2s, v22.2s, v21.2s      // 64-bit vector add
 
-  // ldr r2, [r12], #4 -> ldr w2, [x12], #4
-  ldr    w2, [x12], #4                // Load 32-bit offset into w2, advance x12
+  // ldr r2, [r12], #4 -> ldr w2, [x12], #8
+  ldr    w2, [x12], #8                // Load 32-bit offset into w2, advance x12 by 8 (64-bit elements)
   // vld1.32 {d20, d21}, [r11, :64] -> ldp d20, d21, [x11]
   ldp    d20, d21, [x11]             // Load pair of D registers (twiddle factors)
-  // ldr lr, [r12], #4 -> ldr w16, [x12], #4
-  ldr    w16, [x12], #4                // Load 32-bit offset into w16, advance x12
+  // ldr lr, [r12], #4 -> ldr w16, [x12], #8
+  ldr    w16, [x12], #8                // Load 32-bit offset into w16, advance x12 by 8 (64-bit elements)
+
+  // Pack q4 (v8) with d8 (low) and d9 (high), and q5 (v10) with d10 (low) and d11 (high)
+  // ARM32 expects q4={d8,d9} and q5={d10,d11} before vtrn/vswp/store.
+  mov    v8.d[1],  v9.d[0]
+  mov    v10.d[1], v11.d[0]
 
   // AArch64 equivalent of: vtrn.32 q9, q4
-  mov    v31.16b, v18.16b            // Temp copy of v18 (q9)
+  orr    v31.16b, v18.16b, v18.16b            // Temp copy of v18 (q9)
   trn1   v18.4s, v31.4s, v8.4s       // Transpose lower half
-  trn2   v8.4s, v31.4s, v8.4s        // Transpose upper half
+  trn2   v8.4s,  v31.4s, v8.4s       // Transpose upper half
 
   // add r2, r0, r2, lsl #2 -> add x2, x0, w2, uxtw #2
   add    x2, x0, w2, uxtw #2         // Calculate destination address in x2
 
   // AArch64 equivalent of: vtrn.32 q8, q5
-  mov    v31.16b, v16.16b            // Temp copy of v16 (q8)
+  orr    v31.16b, v16.16b, v16.16b            // Temp copy of v16 (q8)
   trn1   v16.4s, v31.4s, v10.4s      // Transpose lower half
   trn2   v10.4s, v31.4s, v10.4s      // Transpose upper half
 
   // add lr, r0, lr, lsl #2 -> add x16, x0, w16, uxtw #2
   add    x16, x0, w16, uxtw #2       // Calculate destination address in x16
 
-  // CORRECTED: AArch64 equivalent of: vswp d9, d10
-  // This swaps the upper 64 bits of q4 (d9) with the lower 64 bits of q5 (d10).
-  // In AArch64, this corresponds to swapping v4.d[1] and v5.d[0].
-  mov    v31.16b, v4.16b           // Temp copy of v4 (q4)
-  mov    v4.d[1], v5.d[0]            // v4.d[1] (d9) = v5.d[0] (d10)
-  mov    v5.d[0], v31.d[1]           // v5.d[0] (d10) = original v4.d[1] (d9)
+  // AArch64 equivalent of: vswp d9, d10 between q4 (v8) and q5 (v10)
+  orr    v31.16b, v8.16b, v8.16b             // Temp copy of v8 (q4)
+  mov    v8.d[1],  v10.d[0]          // v8.d[1] (d9) = v10.d[0] (d10)
+  mov    v10.d[0], v31.d[1]          // v10.d[0] (d10) = original v8.d[1] (d9)
 
   // vst1.32 {d8, d9, d10, d11}, [lr, :64]! -> stp q4, q5, [x16], #32
-  stp    q4, q5, [x16], #32          // Store q4 (d8,d9) and q5 (d10,d11), advance x16
+  stp    q8, q10, [x16], #32          // Store q4 (d8,d9) and q5 (d10,d11), advance x16
 
   // vld2.32  {q13}, [r10, :64]! -> ld2 {v26.2s, v27.2s}, [x10], #16
   ld2    {v26.2s, v27.2s}, [x10], #16  // Load and de-interleave 2 complex numbers from x10
@@ -933,18 +1267,24 @@ neon64_eo:
   ld2    {v30.2s, v31.2s}, [x9], #16   // Load and de-interleave 2 complex numbers from x9
   // vld2.32  {q11}, [r8,  :64]! -> ld2 {v22.2s, v23.2s}, [x8], #16
   ld2    {v22.2s, v23.2s}, [x8], #16   // Load and de-interleave 2 complex numbers from x8
-  // vsub.f32 q14, q15, q13 -> fsub v28.4s, v30.4s, v26.4s
-  fsub   v28.4s, v30.4s, v26.4s      // Vector subtract
-  // vsub.f32 q12, q0,  q11 -> fsub v24.4s, v0.4s, v22.4s
-  fsub   v24.4s, v0.4s, v22.4s        // Vector subtract
-  // vadd.f32 q11, q0,  q11 -> fadd v22.4s, v0.4s, v22.4s
-  fadd   v22.4s, v0.4s, v22.4s        // Vector add
-  // vadd.f32 q13, q15, q13 -> fadd v26.4s, v30.4s, v26.4s
-  fadd   v26.4s, v30.4s, v26.4s      // Vector add
-  // vadd.f32 d13, d29, d24 -> fadd v13.2s, v29.2s, v24.2s
-  fadd   v13.2s, v29.2s, v24.2s      // 64-bit vector add
-  // vadd.f32 q15, q13, q11 -> fadd v30.4s, v26.4s, v22.4s
-  fadd   v30.4s, v26.4s, v22.4s      // Vector add
+  // vsub.f32 q14, q15, q13 -> d28=d30-d26; d29=d31-d27
+  fsub   v28.2s, v30.2s, v26.2s
+  fsub   v29.2s, v31.2s, v27.2s
+  // vsub.f32 q12, q0,  q11 -> d24=d0-d22; d25=d1-d23
+  fsub   v24.2s, v0.2s,  v22.2s
+  fsub   v25.2s, v1.2s,  v23.2s
+  // vadd.f32 q11, q0,  q11 -> d22=d0+d22; d23=d1+d23
+  fadd   v22.2s, v0.2s,  v22.2s
+  fadd   v23.2s, v1.2s,  v23.2s
+  // vadd.f32 q13, q15, q13 -> d26=d30+d26; d27=d31+d27
+  fadd   v26.2s, v30.2s, v26.2s
+  fadd   v27.2s, v31.2s, v27.2s
+  // vadd.f32 d13, d29, d24 -> place into q6's high half (v12.d[1])
+  fadd   v13.2s, v29.2s, v24.2s      // compute d13 into temp v13
+  mov    v12.d[1], v13.d[0]          // move d13 -> v12.d[1]
+  // vadd.f32 q15, q13, q11 -> d30=d26+d22; d31=d27+d23
+  fadd   v30.2s, v26.2s, v22.2s
+  fadd   v31.2s, v27.2s, v23.2s
   // vsub.f32 d12, d28, d25 -> fsub v12.2s, v28.2s, v25.2s
   fsub   v12.2s, v28.2s, v25.2s      // 64-bit vector subtract
   // vsub.f32 d15, d29, d24 -> fsub v15.2s, v29.2s, v24.2s
@@ -953,35 +1293,35 @@ neon64_eo:
   fadd   v14.2s, v28.2s, v25.2s      // 64-bit vector add
 
   // AArch64 equivalent of: vtrn.32 q15, q6
-  mov    v31.16b, v30.16b            // Temp copy of v30 (q15)
+  orr    v31.16b, v30.16b, v30.16b            // Temp copy of v30 (q15)
   trn1   v30.4s, v31.4s, v12.4s      // Transpose lower half
   trn2   v12.4s, v31.4s, v12.4s      // Transpose upper half
 
-  // vsub.f32 q15, q13, q11 -> fsub v30.4s, v26.4s, v22.4s
-  fsub   v30.4s, v26.4s, v22.4s      // Vector subtract
+  // vsub.f32 q15, q13, q11 -> compute both halves explicitly
+  fsub   v30.2s, v26.2s, v22.2s      // d30 = d26 - d22 (low)
+  fsub   v31.2s, v27.2s, v23.2s      // temp = d27 - d23 (for high)
+  mov    v30.d[1], v31.d[0]          // place high half into q15
 
   // AArch64 equivalent of: vtrn.32 q15, q7
-  mov    v31.16b, v30.16b            // Temp copy of v30 (q15)
+  orr    v31.16b, v30.16b, v30.16b            // Temp copy of v30 (q15)
   trn1   v30.4s, v31.4s, v14.4s      // Transpose lower half
   trn2   v14.4s, v31.4s, v14.4s      // Transpose upper half
 
-  // CORRECTED: AArch64 equivalent of: vswp d13, d14
-  // Swaps upper 64 bits of q6 (d13) with lower 64 bits of q7 (d14).
-  // In AArch64, this corresponds to swapping v6.d[1] and v7.d[0].
-  mov    v31.16b, v6.16b           // Temp copy of v6 (q6)
-  mov    v6.d[1], v7.d[0]            // v6.d[1] (d13) = v7.d[0] (d14)
-  mov    v7.d[0], v31.d[1]           // v7.d[0] (d14) = original v6.d[1] (d13)
-
-  // vst1.32 {d12, d13, d14, d15}, [lr, :64]! -> stp q6, q7, [x16], #32
-  stp    q6, q7, [x16], #32           // Store q6 (d12,d13) and q7 (d14,d15), advance x16
+  // CORRECTED: vswp d13, d14 between q6 (v12) and q7 (v14)
+  orr    v31.16b, v12.16b, v12.16b          // Temp copy of v12 (q6)
+  mov    v12.d[1], v14.d[0]        // v12.d[1] (d13) = v14.d[0] (d14)
+  mov    v14.d[0], v31.d[1]        // v14.d[0] (d14) = original v12.d[1] (d13)
+ 
+  // vst1.32 {d12, d13, d14, d15}, [lr, :64]! -> stp q12, q14, [x16], #32
+  stp    q12, q14, [x16], #32         // Store q6 (d12,d13) and q7 (d14,d15), advance x16
 
   // AArch64 equivalent of: vtrn.32 q13, q14
-  mov    v31.16b, v26.16b            // Temp copy of v26 (q13)
+  orr    v31.16b, v26.16b, v26.16b            // Temp copy of v26 (q13)
   trn1   v26.4s, v31.4s, v28.4s      // Transpose lower half
   trn2   v28.4s, v31.4s, v28.4s      // Transpose upper half
 
   // AArch64 equivalent of: vtrn.32 q11, q12
-  mov    v31.16b, v22.16b            // Temp copy of v22 (q11)
+  orr    v31.16b, v22.16b, v22.16b            // Temp copy of v22 (q11)
   trn1   v22.4s, v31.4s, v24.4s      // Transpose lower half
   trn2   v24.4s, v31.4s, v24.4s      // Transpose upper half
 
@@ -1005,23 +1345,29 @@ neon64_eo:
   fadd   v22.4s, v24.4s, v20.4s
   fsub   v20.4s, v24.4s, v20.4s
   fadd   v0.4s, v18.4s, v22.4s
-  fsub   v4.4s, v18.4s, v22.4s
-  fadd   v3.2s, v17.2s, v20.2s
-  fsub   v7.2s, v17.2s, v20.2s
-  fsub   v2.2s, v16.2s, v21.2s
-  fadd   v6.2s, v16.2s, v21.2s
+  fsub   v2.4s, v18.4s, v22.4s
+  // ARM32 d-lane ops:
+  // d3 = d17 + d20; d7 = d17 - d20; d2 = d16 - d21; d6 = d16 + d21
+  fadd   v31.2s, v17.2s, v20.2s
+  mov    v1.d[1], v31.d[0]
+  fsub   v31.2s, v17.2s, v20.2s
+  mov    v3.d[1], v31.d[0]
+  fsub   v31.2s, v16.2s, v21.2s
+  mov    v1.d[0], v31.d[0]
+  fadd   v31.2s, v16.2s, v21.2s
+  mov    v3.d[0], v31.d[0]
 
   // AArch64 equivalent of: vswp d1, d2
   // Swaps upper 64 bits of q0 (d1) with lower 64 bits of q1 (d2).
   // Corresponds to swapping v0.d[1] and v1.d[0].
-  mov    v31.16b, v0.16b           // Temp copy of v0 (q0)
+  orr    v31.16b, v0.16b, v0.16b           // Temp copy of v0 (q0)
   mov    v0.d[1], v1.d[0]            // v0.d[1] (d1) = v1.d[0] (d2)
   mov    v1.d[0], v31.d[1]           // v1.d[0] (d2) = original v0.d[1] (d1)
 
   // AArch64 equivalent of: vswp d5, d6
   // Swaps upper 64 bits of q2 (d5) with lower 64 bits of q3 (d6).
   // Corresponds to swapping v2.d[1] and v3.d[0].
-  mov    v31.16b, v2.16b           // Temp copy of v2 (q2)
+  orr    v31.16b, v2.16b, v2.16b           // Temp copy of v2 (q2)
   mov    v2.d[1], v3.d[0]            // v2.d[1] (d5) = v3.d[0] (d6)
   mov    v3.d[0], v31.d[1]           // v3.d[0] (d6) = original v2.d[1] (d5)
 
@@ -1031,17 +1377,23 @@ neon64_eo:
 
 
 //
-// AArch64 port of the neon_oe macro.
+// ARM64 port of the ARM32 neon_oe macro - Radix-8 FFT Butterfly with Complex Twiddle Multiplication
 //
-// Register mapping from ARM32 to AArch64:
-// r0 (out)         -> x0
-// r3-r10 (data)    -> x3-x10
-// r11 (twiddle)    -> x11
-// r12 (offsets)    -> x12
-// r2 (temp)        -> x2
-// lr (temp)        -> x14
-// q0-q15 / d0-d31  -> v0-v15
-// v16 is used as a temporary vector register.
+// This function implements a highly optimized radix-8 FFT butterfly operation for ARM64.
+// It processes 32 complex numbers (8 groups of 4) per invocation, matching the ARM32 implementation exactly.
+//
+// Register mapping from ARM32 to ARM64:
+// r0 (output base)     -> x0
+// r12 (offset array)   -> x12  
+// r3-r10 (data ptrs)   -> x3-x10
+// r11 (twiddle table)  -> x11
+// r2, lr (temps)       -> x2, x14
+// q0-q15, d0-d31       -> v0-v15 (with d-register access via .d[0]/.d[1])
+//
+// Data Format:
+// - Complex numbers stored as interleaved pairs [Re₀, Im₀, Re₁, Im₁, ...]
+// - Input: 8 streams × 4 complex numbers = 32 complex numbers total
+// - Output: Processed complex numbers with twiddle factors applied
 //
   .align 4
 #ifdef __APPLE__
@@ -1051,249 +1403,341 @@ _neon64_oe:
     .globl neon64_oe
 neon64_oe:
 #endif
-  // vld1.32  {q8},  [r5,  :64]!
-  // vld1.32  {q10}, [r6,  :64]!
-  ldr   q8, [x5], #16
-  ldr   q10, [x6], #16
+    brk     #0x0E00  // BRK_OE_ENTRY
+    
+    // NEW: Verify entry parameters for oe
+    brk     #0x0E01  // BRK_OE_ENTRY_PARAMS
+    
+    // ================================================================================
+    // PHASE 1: Initial Data Loading (ARM32 Lines 557-561)
+    // Load 4 consecutive complex numbers and 3 sets of 8 deinterleaved complex numbers
+    // ================================================================================
+    
+    // ARM32: vld1.32 {q8}, [r5, :128]! -> Load 4 consecutive 32-bit floats (16 bytes)
+    ldr     q8, [x5], #16               // v8: 4 consecutive complex values from x5
+    
+    // ARM32: vld1.32 {q10}, [r6, :128]! -> Load 4 consecutive 32-bit floats (16 bytes)  
+    ldr     q10, [x6], #16              // v10: 4 consecutive complex values from x6
+    
+    // ARM32: vld2.32 {q11}, [r4, :128]! -> Deinterleaving load (32 bytes)
+    ld2     {v22.4s, v23.4s}, [x4], #32 // v22=real parts, v23=imag parts from x4
+    
+    // ARM32: vld2.32 {q13}, [r3, :128]! -> Deinterleaving load (32 bytes)
+    ld2     {v26.4s, v27.4s}, [x3], #32 // v26=real parts, v27=imag parts from x3
+    
+    // ARM32: vld2.32 {q15}, [r10, :128]! -> Deinterleaving load (32 bytes)
+    ld2     {v30.4s, v31.4s}, [x10], #32 // v30=real parts, v31=imag parts from x10
 
-  // vld2.32  {q11}, [r4,  :64]!       // De-interleaves into d22, d23
-  // vld2.32  {q13}, [r3,  :64]!       // De-interleaves into d26, d27
-  // vld2.32  {q15}, [r10, :64]!       // De-interleaves into d30, d31
-  ld2   { v22.2s, v23.2s }, [x4], #16
-  ld2   { v26.2s, v27.2s }, [x3], #16
-  ld2   { v30.2s, v31.2s }, [x10], #16
+    // NEW: Verify initial data loads
+    brk     #0x0E02  // BRK_OE_INITIAL_LOADS
 
-  // vorr     d25, d17, d17           // mov d25, d17 (high half of q8)
-  // vorr     d24, d20, d20           // mov d24, d20 (low half of q10)
-  // vorr     d20, d16, d16           // mov d20, d16 (low half of q8)
-  ext   v25.16b, v8.16b, v8.16b, #8    // v25 = high 64 bits of v8
-  mov   v24.8b, v10.8b                // v24 = low 64 bits of v10
-  mov   v20.8b, v8.8b                 // v20 = low 64 bits of v8
+    // ================================================================================
+    // PHASE 2: Register Reorganization (ARM32 Lines 562-564)
+    // Copy d-register halves to build q12 from q8 and q10 components
+    // ================================================================================
+    
+    // ARM32: vorr d25, d17, d17 -> Copy upper 64 bits of q8
+    mov     v25.d[0], v8.d[1]           // d25 = upper half of v8 (d17)
+    
+    // ARM32: vorr d24, d20, d20 -> Copy lower 64 bits of q10  
+    mov     v24.d[0], v10.d[0]          // d24 = lower half of v10 (d20)
+    
+    // ARM32: vorr d20, d16, d16 -> Copy lower 64 bits of q8
+    mov     v20.d[0], v8.d[0]           // d20 = lower half of v8 (d16)
+    
+    // Build q12 from d24,d25 components
+    mov     v12.d[0], v24.d[0]          // q12 lower = d24
+    mov     v12.d[1], v25.d[0]          // q12 upper = d25
 
-  // vsub.f32 q9,  q13, q11           // q9={d18,d19} q13={d26,d27} q11={d22,d23}
-  // vadd.f32 q11, q13, q11
-  fsub  v18.2s, v26.2s, v22.2s
-  fsub  v19.2s, v27.2s, v23.2s
-  fadd  v22.2s, v26.2s, v22.2s
-  fadd  v23.2s, v27.2s, v23.2s
+    // ================================================================================
+    // PHASE 3: First Butterfly Computations (ARM32 Lines 565-566)
+    // Complex butterfly: sum and difference operations on deinterleaved data
+    // ================================================================================
+    
+    // ARM32: vsub.f32 q9, q13, q11 -> Complex subtraction
+    fsub    v18.4s, v26.4s, v22.4s      // v18 = q13_real - q11_real  
+    fsub    v19.4s, v27.4s, v23.4s      // v19 = q13_imag - q11_imag
+    
+    // ARM32: vadd.f32 q11, q13, q11 -> Complex addition
+    fadd    v22.4s, v26.4s, v22.4s      // v22 = q13_real + q11_real
+    fadd    v23.4s, v27.4s, v23.4s      // v23 = q13_imag + q11_imag
 
-  // ldr      r2,  [r12], #4
-  // Note: ptrdiff_t is 64-bit on AArch64.
-  ldr   x2, [x12], #8
+    // ================================================================================
+    // PHASE 4: Output Address Calculation (ARM32 Lines 567-573)
+    // Load offsets and calculate output addresses while continuing butterflies
+    // ================================================================================
+    
+    // ARM32: ldr r2, [r12], #4 -> Load first offset
+    ldr     w2, [x12], #8               // Load 32-bit offset, advance by 8 (64-bit elements)
+    brk     #0x0E10  // BRK_OE_OFF2_LOADED
 
-  // vtrn.32  d24, d25
-  trn1  v16.2s, v24.2s, v25.2s
-  trn2  v25.2s, v24.2s, v25.2s
-  mov   v24.16b, v16.16b
+5:
+    
+    // ARM32: vtrn.32 d24, d25 -> Transpose 32-bit elements
+    trn1    v16.2s, v24.2s, v25.2s      // Transpose d24, d25
+    trn2    v25.2s, v24.2s, v25.2s
+    mov     v24.16b, v16.16b
+    
+    // ARM32: ldr lr, [r12], #4 -> Load second offset  
+        ldr     w14, [x12], #8              // Load second 32-bit offset
+    
+6:
+     // ARM32: vtrn.32 d20, d21 -> Transpose for q10 components
+    mov     v21.d[0], v10.d[1]          // Extract upper half of q10
+    trn1    v16.2s, v20.2s, v21.2s      // Transpose d20, d21
+    trn2    v21.2s, v20.2s, v21.2s
+    mov     v20.16b, v16.16b
+    
+    // ARM32: add r2, r0, r2, lsl #2 -> Calculate first output address
+    add     x2, x0, w2, uxtw #2         // First output address
 
-  // ldr      lr,  [r12], #4
-  ldr   x14, [x12], #8
+7:
+    
+    // ARM32: vsub.f32 q8, q10, q12 -> Continue butterfly operations
+    // Rebuild q10 from d20,d21 and use q12 built earlier
+    mov     v10.d[0], v20.d[0]
+    mov     v10.d[1], v21.d[0]
+    fsub    v16.4s, v10.4s, v12.4s      // q8 = q10 - q12
+    fsub    v17.4s, v10.4s, v12.4s      // Split for d-register access
+    
+    // ARM32: add lr, r0, lr, lsl #2 -> Calculate second output address
+    add     x14, x0, w14, uxtw #2       // Second output address
+    brk     #0x0E11  // BRK_OE_ADDRS_READY
 
-  // vtrn.32  d20, d21
-  trn1  v16.2s, v20.2s, v21.2s
-  trn2  v21.2s, v20.2s, v21.2s
-  mov   v20.16b, v16.16b
+8:
+     // ================================================================================  
+     // PHASE 5: Complete First Set of Butterflies (ARM32 Lines 574-580)
+    // Final butterfly computations and d-register lane operations
+    // ================================================================================
+    
+    // ARM32: vadd.f32 q10, q10, q12 -> Complete butterfly
+    fadd    v20.4s, v10.4s, v12.4s      // q10 = q10 + q12
+    fadd    v21.4s, v10.4s, v12.4s      // Maintain d-register components
+    
+    // ARM32: vadd.f32 q0, q11, q10 -> Second stage butterfly sum
+    fadd    v0.4s, v22.4s, v20.4s       // q0 real parts
+    fadd    v1.4s, v23.4s, v21.4s       // q0 imag parts
+    
+    // ARM32: vsub.f32 q1, q11, q10 -> Second stage butterfly difference  
+    fsub    v2.4s, v22.4s, v20.4s       // q1 real parts
+    fsub    v3.4s, v23.4s, v21.4s       // q1 imag parts
+    
+    // ARM32: Individual d-register operations for real/imaginary handling
+    // vadd.f32 d25, d19, d16; vsub.f32 d27, d19, d16
+    fadd    v25.2s, v19.2s, v16.2s      // d25 = d19 + d16
+    fsub    v27.2s, v19.2s, v16.2s      // d27 = d19 - d16
+    
+    // vsub.f32 d24, d18, d17; vadd.f32 d26, d18, d17  
+    fsub    v24.2s, v18.2s, v17.2s      // d24 = d18 - d17
+    fadd    v26.2s, v18.2s, v17.2s      // d26 = d18 + d17
 
-  // add      r2,  r0,  r2, lsl #2
-  add   x2, x0, x2, lsl #3              // Multiply index by 8 (size of complex float)
+    // ================================================================================
+    // PHASE 6: Data Transposition and First Store (ARM32 Lines 581-585)
+    // Transpose results for proper output format and store first set
+    // ================================================================================
+    
+    // ARM32: vtrn.32 q0, q12 -> Transpose for output format
+    // Rebuild q12 from d24, d25
+    mov     v12.d[0], v24.d[0]
+    mov     v12.d[1], v25.d[0]
+    trn1    v16.4s, v0.4s, v12.4s       // Transpose q0, q12
+    trn2    v12.4s, v0.4s, v12.4s
+    mov     v0.16b, v16.16b
+    
+    // ARM32: vtrn.32 q1, q13 -> Transpose q1, q13  
+    // Rebuild q13 from d26, d27
+    mov     v13.d[0], v26.d[0]
+    mov     v13.d[1], v27.d[0]
+    trn1    v16.4s, v1.4s, v13.4s       // Transpose q1, q13
+    trn2    v13.4s, v1.4s, v13.4s
+    mov     v1.16b, v16.16b
+    
+    // ARM32: vld1.32 {d24, d25}, [r11, :64] -> Load twiddle factors
+    ldp     d24, d25, [x11]             // Load twiddle factors from x11
+    
+    // ARM32: vswp d1, d2 -> Swap d-register halves for proper arrangement
+    orr     v31.16b, v0.16b, v0.16b     // Temp copy of v0
+    mov     v0.d[1], v1.d[0]            // Swap upper v0 with lower v1
+    mov     v1.d[0], v31.d[1]           // Complete the swap
+    
+    // ARM32: vst1.32 {q0, q1}, [r2, :64]! -> Store first set of results
+    stp     q0, q1, [x2], #32           // Store interleaved results
+    
+    // NEW: Verify first store in oe
+    brk     #0x0E14  // BRK_OE_FIRST_STORE
+ 
+     // ===============================================================================
+    // PHASE 7: Second Set of Data Loading (ARM32 Lines 586-589)
+    // Load more complex data using deinterleaving loads
+    // ================================================================================
+    
+    // ARM32: vld2.32 {q0}, [r9, :64]! -> Load from x9
+    ld2     {v0.4s, v1.4s}, [x9], #32   // Deinterleave load from x9
+    
+    // ARM32: vadd.f32 q1, q0, q15 -> Add with previous q15 data
+    fadd    v2.4s, v0.4s, v30.4s        // q1 real = q0 real + q15 real
+    fadd    v3.4s, v1.4s, v31.4s        // q1 imag = q0 imag + q15 imag
+    
+    // ARM32: vld2.32 {q13}, [r8, :64]! -> Load from x8
+    ld2     {v26.4s, v27.4s}, [x8], #32 // Deinterleave load from x8
+    
+    // ARM32: vld2.32 {q14}, [r7, :64]! -> Load from x7  
+    ld2     {v28.4s, v29.4s}, [x7], #32 // Deinterleave load from x7
 
-  // vsub.f32 q8,  q10, q12           // q8={d16,d17} q10={d20,d21} q12={d24,d25}
-  // add      lr,  r0,  lr, lsl #2
-  // vadd.f32 q10, q10, q12
-  fsub  v16.2s, v20.2s, v24.2s
-  fsub  v17.2s, v21.2s, v25.2s
-  add   x14, x0, x14, lsl #3
-  fadd  v20.2s, v20.2s, v24.2s
-  fadd  v21.2s, v21.2s, v25.2s
-  
-  // Reconstruct q8 from its new parts in d16,d17
-  mov   v8.d[0], v16.d[0]
-  mov   v8.d[1], v17.d[0]
-  
-  // vadd.f32 q0,  q11, q10           // q0={d0,d1} q11={d22,d23}, q10={d20,d21}
-  // vadd.f32 d25, d19, d16           // Using d register names directly from here
-  // vsub.f32 d27, d19, d16
-  fadd  v0.2s, v22.2s, v20.2s
-  fadd  v1.2s, v23.2s, v21.2s
-  fadd  v25.2s, v19.2s, v16.2s
-  fsub  v27.2s, v19.2s, v16.2s
+    // ================================================================================
+    // PHASE 8: Second Set of Butterflies (ARM32 Lines 590-602)
+    // More butterfly operations on the second set of data
+    // ================================================================================
+    
+    // ARM32: vsub.f32 q15, q0, q15 -> Complex subtraction
+    fsub    v30.4s, v0.4s, v30.4s       // q15 real = q0 real - q15 real
+    fsub    v31.4s, v1.4s, v31.4s       // q15 imag = q0 imag - q15 imag
+    
+    // ARM32: vsub.f32 q0, q14, q13 -> Complex subtraction  
+    fsub    v0.4s, v28.4s, v26.4s       // q0 real = q14 real - q13 real
+    fsub    v1.4s, v29.4s, v27.4s       // q0 imag = q14 imag - q13 imag
+    
+    // ARM32: vadd.f32 q3, q14, q13 -> Complex addition
+    fadd    v6.4s, v28.4s, v26.4s       // q3 real = q14 real + q13 real  
+    fadd    v7.4s, v29.4s, v27.4s       // q3 imag = q14 imag + q13 imag
+    
+    // ARM32: vadd.f32 q2, q3, q1 -> Combine results
+    fadd    v4.4s, v6.4s, v2.4s         // q2 real = q3 real + q1 real
+    fadd    v5.4s, v7.4s, v3.4s         // q2 imag = q3 imag + q1 imag
+    
+    // ARM32: Individual d-register operations
+    // vadd.f32 d29, d1, d30; vsub.f32 d27, d1, d30
+    fadd    v29.2s, v1.2s, v30.2s       // d29 = d1 + d30
+    fsub    v27.2s, v1.2s, v30.2s       // d27 = d1 - d30
+    
+    // ARM32: vsub.f32 q3, q3, q1 -> Continue butterflies
+    fsub    v6.4s, v6.4s, v2.4s         // q3 real = q3 real - q1 real
+    fsub    v7.4s, v7.4s, v3.4s         // q3 imag = q3 imag - q1 imag
+    
+    // vsub.f32 d28, d0, d31; vadd.f32 d26, d0, d31
+    fsub    v28.2s, v0.2s, v31.2s       // d28 = d0 - d31  
+    fadd    v26.2s, v0.2s, v31.2s       // d26 = d0 + d31
+    
+    // ARM32: Transpose operations for second set
+    // vtrn.32 q2, q14; vtrn.32 q3, q13
+    mov     v14.d[0], v28.d[0]          // Rebuild q14 from d28, d29
+    mov     v14.d[1], v29.d[0]
+    trn1    v16.4s, v4.4s, v14.4s       // Transpose q2, q14
+    trn2    v14.4s, v4.4s, v14.4s
+    mov     v4.16b, v16.16b
+    
+    mov     v13.d[0], v26.d[0]          // Rebuild q13 from d26, d27  
+    mov     v13.d[1], v27.d[0]
+    trn1    v16.4s, v5.4s, v13.4s       // Transpose q3, q13
+    trn2    v13.4s, v5.4s, v13.4s
+    mov     v5.16b, v16.16b
+    
+    // ARM32: vswp d5, d6 -> Swap for proper arrangement
+    orr     v31.16b, v2.16b, v2.16b     // Temp copy
+    mov     v2.d[1], v3.d[0]            // Swap upper v2 with lower v3
+    mov     v3.d[0], v31.d[1]           // Complete the swap
+    
+    // ARM32: vst1.32 {q2, q3}, [r2, :64]! -> Store second set
+    stp     q2, q3, [x2], #32           // Store second set of results
+ 
+     // ================================================================================
+     // PHASE 9: Twiddle Factor Multiplication (ARM32 Lines 603-616)  
+    // Complex multiplication with twiddle factors using d-register operations
+    // ================================================================================
+    
+    // Prepare d-register components for twiddle multiplication
+    // Extract components from butterfly results for complex multiplication
+    mov     v18.d[0], v6.d[0]           // d18 from q3 (q9 in ARM32)
+    mov     v19.d[0], v7.d[0]           // d19 from q3
+    mov     v16.d[0], v4.d[0]           // d16 from q2 (q8 in ARM32)  
+    mov     v17.d[0], v5.d[0]           // d17 from q2
+    mov     v20.d[0], v14.d[0]          // d20 from q14 (q10 in ARM32)
+    mov     v21.d[0], v14.d[1]          // d21 from q14
+    
+    // ARM32: Complex multiplication: (a + bi) × (c + di) = (ac - bd) + (ad + bc)i
+    // vmul.f32 d20, d18, d25; vmul.f32 d22, d19, d24
+    fmul    v20.2s, v18.2s, v25.2s      // d20 = d18 * twiddle_imag  
+    fmul    v22.2s, v19.2s, v24.2s      // d22 = d19 * twiddle_real
+    
+    // vmul.f32 d21, d19, d25; vmul.f32 d18, d18, d24
+    fmul    v21.2s, v19.2s, v25.2s      // d21 = d19 * twiddle_imag
+    fmul    v18.2s, v18.2s, v24.2s      // d18 = d18 * twiddle_real
+    
+    // vmul.f32 d19, d16, d25; vmul.f32 d30, d17, d24  
+    fmul    v19.2s, v16.2s, v25.2s      // d19 = d16 * twiddle_imag
+    fmul    v30.2s, v17.2s, v24.2s      // d30 = d17 * twiddle_real
+    
+    // vmul.f32 d23, d16, d24; vmul.f32 d24, d17, d25
+    fmul    v23.2s, v16.2s, v24.2s      // d23 = d16 * twiddle_real
+    fmul    v24.2s, v17.2s, v25.2s      // d24 = d17 * twiddle_imag
+    
+    // ARM32: Combine terms for complex multiplication results
+    // vadd.f32 d17, d22, d20; vsub.f32 d16, d18, d21  
+    fadd    v17.2s, v22.2s, v20.2s      // d17 = real part result
+    fsub    v16.2s, v18.2s, v21.2s      // d16 = imag part result
+    
+    // vsub.f32 d21, d30, d19; vadd.f32 d20, d24, d23
+    fsub    v21.2s, v30.2s, v19.2s      // d21 = second real result  
+    fadd    v20.2s, v24.2s, v23.2s      // d20 = second imag result
 
-  // vsub.f32 q1,  q11, q10
-  // vsub.f32 d24, d18, d17
-  // vadd.f32 d26, d18, d17
-  fsub  v2.2s, v22.2s, v20.2s
-  fsub  v3.2s, v23.2s, v21.2s
-  fsub  v24.2s, v18.2s, v17.2s
-  fadd  v26.2s, v18.2s, v17.2s
-
-  // vtrn.32  q0,  q12               // Transposes d0,d24 and d1,d25
-  trn1  v16.2s, v0.2s, v24.2s
-  trn2  v24.2s, v0.2s, v24.2s
-  mov   v0.16b, v16.16b
-  trn1  v16.2s, v1.2s, v25.2s
-  trn2  v25.2s, v1.2s, v25.2s
-  mov   v1.16b, v16.16b
-
-  // vtrn.32  q1,  q13               // Transposes d2,d26 and d3,d27
-  trn1  v16.2s, v2.2s, v26.2s
-  trn2  v26.2s, v2.2s, v26.2s
-  mov   v2.16b, v16.16b
-  trn1  v16.2s, v3.2s, v27.2s
-  trn2  v27.2s, v3.2s, v27.2s
-  mov   v3.16b, v16.16b
-
-  // vld1.32  {d24, d25}, [r11, :64]
-  ldr   q12, [x11]                    // Load twiddles into v12={d24,d25}
-
-  // vswp     d1, d2
-  mov   v16.16b, v1.16b
-  mov   v1.16b, v2.16b
-  mov   v2.16b, v16.16b
-
-  // vst1.32  {q0,  q1},  [r2, :64]!
-  stp   q0, q1, [x2], #32
-
-  // vld2.32  {q0},  [r9, :64]!        // De-interleaves into d0, d1
-  // vadd.f32 q1,  q0, q15            // q1={d2,d3}, q0={d0,d1}, q15={d30,d31}
-  ld2   { v0.2s, v1.2s }, [x9], #16
-  fadd  v2.2s, v0.2s, v30.2s
-  fadd  v3.2s, v1.2s, v31.2s
-
-  // vld2.32  {q13}, [r8, :64]!       // De-interleaves into d26, d27
-  // vld2.32  {q14}, [r7, :64]!       // De-interleaves into d28, d29
-  ld2   { v26.2s, v27.2s }, [x8], #16
-  ld2   { v28.2s, v29.2s }, [x7], #16
-
-  // vsub.f32 q15, q0,  q15
-  fsub  v30.2s, v0.2s, v30.2s
-  fsub  v31.2s, v1.2s, v31.2s
-  
-  // vsub.f32 q0,  q14, q13           // q0={d0,d1} q14={d28,d29} q13={d26,d27}
-  // vadd.f32 q3,  q14, q13
-  fsub  v0.2s, v28.2s, v26.2s
-  fsub  v1.2s, v29.2s, v27.2s
-  fadd  v6.2s, v28.2s, v26.2s         // q3 is {d6,d7}
-  fadd  v7.2s, v29.2s, v27.2s
-
-  // vadd.f32 q2,  q3,  q1
-  // vadd.f32 d29, d1,  d30
-  // vsub.f32 d27, d1,  d30
-  fadd  v4.2s, v6.2s, v2.2s           // q2 is {d4,d5}
-  fadd  v5.2s, v7.2s, v3.2s
-  fadd  v29.2s, v1.2s, v30.2s
-  fsub  v27.2s, v1.2s, v30.2s
-
-  // vsub.f32 q3,  q3,  q1
-  // vsub.f32 d28, d0,  d31
-  // vadd.f32 d26, d0,  d31
-  fsub  v6.2s, v6.2s, v2.2s
-  fsub  v7.2s, v7.2s, v3.2s
-  fsub  v28.2s, v0.2s, v31.2s
-  fadd  v26.2s, v0.2s, v31.2s
-
-  // vtrn.32  q2,  q14               // Transposes d4,d28 and d5,d29
-  trn1  v16.2s, v4.2s, v28.2s
-  trn2  v28.2s, v4.2s, v28.2s
-  mov   v4.16b, v16.16b
-  trn1  v16.2s, v5.2s, v29.2s
-  trn2  v29.2s, v5.2s, v29.2s
-  mov   v5.16b, v16.16b
-
-  // vtrn.32  q3,  q13               // Transposes d6,d26 and d7,d27
-  trn1  v16.2s, v6.2s, v26.2s
-  trn2  v26.2s, v6.2s, v26.2s
-  mov   v6.16b, v16.16b
-  trn1  v16.2s, v7.2s, v27.2s
-  trn2  v27.2s, v7.2s, v27.2s
-  mov   v7.16b, v16.16b
-
-  // vswp     d5, d6
-  mov   v16.16b, v5.16b
-  mov   v5.16b, v6.16b
-  mov   v6.16b, v16.16b
-
-  // vst1.32  {q2, q3}, [r2, :64]!
-  stp   q2, q3, [x2], #32
-
-  // vtrn.32  q11, q9                // Transposes d22,d18 and d23,d19
-  // vtrn.32  q10, q8                // Transposes d20,d16 and d21,d17
-  trn1  v16.2s, v22.2s, v18.2s
-  trn2  v18.2s, v22.2s, v18.2s
-  mov   v22.16b, v16.16b
-  trn1  v16.2s, v23.2s, v19.2s
-  trn2  v19.2s, v23.2s, v19.2s
-  mov   v23.16b, v16.16b
-  trn1  v16.2s, v20.2s, v16.2s
-  trn2  v16.2s, v20.2s, v16.2s
-  mov   v20.16b, v16.16b
-  trn1  v16.2s, v21.2s, v17.2s
-  trn2  v17.2s, v21.2s, v17.2s
-  mov   v21.16b, v16.16b
-
-  // Complex multiply section (twiddles in d24,d25)
-  // vmul.f32 d20, d18, d25
-  // vmul.f32 d22, d19, d24
-  // vmul.f32 d21, d19, d25
-  // vmul.f32 d18, d18, d24
-  fmul  v20.2s, v18.2s, v25.2s
-  fmul  v22.2s, v19.2s, v24.2s
-  fmul  v21.2s, v19.2s, v25.2s
-  fmul  v18.2s, v18.2s, v24.2s
-
-  // vmul.f32 d19, d16, d25
-  // vmul.f32 d30, d17, d24
-  // vmul.f32 d23, d16, d24
-  // vmul.f32 d24, d17, d25
-  fmul  v19.2s, v16.2s, v25.2s
-  fmul  v30.2s, v17.2s, v24.2s
-  fmul  v23.2s, v16.2s, v24.2s
-  fmul  v24.2s, v17.2s, v25.2s
-
-  // vadd.f32 d17, d22, d20
-  // vsub.f32 d16, d18, d21
-  // vsub.f32 d21, d30, d19
-  // vadd.f32 d20, d24, d23
-  fadd  v17.2s, v22.2s, v20.2s
-  fsub  v16.2s, v18.2s, v21.2s
-  fsub  v21.2s, v30.2s, v19.2s
-  fadd  v20.2s, v24.2s, v23.2s
-  
-  // Last butterfly and store
-  // vadd.f32 q9,  q8,  q10          // q9={d18,d19}, q8={d16,d17}, q10={d20,d21}
-  // vsub.f32 q8,  q8,  q10
-  fadd  v18.2s, v16.2s, v20.2s
-  fadd  v19.2s, v17.2s, v21.2s
-  fsub  v16.2s, v16.2s, v20.2s
-  fsub  v17.2s, v17.2s, v21.2s
-  
-  // vadd.f32 q4,  q14, q9
-  // vsub.f32 q6,  q14, q9
-  // vadd.f32 d11, d27, d16
-  // vsub.f32 d15, d27, d16
-  fadd  v8.2s, v28.2s, v18.2s        // q4 = {d8,d9}
-  fadd  v9.2s, v29.2s, v19.2s
-  fsub  v12.2s, v28.2s, v18.2s       // q6 = {d12,d13}
-  fsub  v13.2s, v29.2s, v19.2s
-  fadd  v11.2s, v27.2s, v16.2s       // d11
-  fsub  v15.2s, v27.2s, v16.2s       // d15
-  
-  // vsub.f32 d10, d26, d17
-  // vadd.f32 d14, d26, d17
-  fsub  v10.2s, v26.2s, v17.2s       // d10
-  fadd  v14.2s, v26.2s, v17.2s       // d14
-  
-  // vswp     d9,  d10
-  // vswp     d13, d14
-  mov   v16.16b, v9.16b
-  mov   v9.16b, v10.16b
-  mov   v10.16b, v16.16b
-  mov   v16.16b, v13.16b
-  mov   v13.16b, v14.16b
-  mov   v14.16b, v16.16b
-  
-  // vstmia   lr!, {q4-q7}
-  stp   q4, q5, [x14], #32
-  stp   q6, q7, [x14], #32
+    // ================================================================================
+    // PHASE 10: Final Butterflies and Storage (ARM32 Lines 617-627)
+    // Final butterfly operations and storage of remaining results
+    // ================================================================================
+    
+    // ARM32: vadd.f32 q9, q8, q10; vsub.f32 q8, q8, q10
+    // Rebuild q8 and q10 from d-register results
+    mov     v8.d[0], v16.d[0]           // Rebuild q8 from d16, d17
+    mov     v8.d[1], v17.d[0]
+    mov     v10.d[0], v20.d[0]          // Rebuild q10 from d20, d21  
+    mov     v10.d[1], v21.d[0]
+    
+    fadd    v18.4s, v8.4s, v10.4s       // q9 = q8 + q10
+    fadd    v19.4s, v8.4s, v10.4s       // Split for d-register access
+    fsub    v16.4s, v8.4s, v10.4s       // q8 = q8 - q10
+    fsub    v17.4s, v8.4s, v10.4s       // Split for d-register access
+    
+    // ARM32: Final butterfly combinations with stored results
+    // vadd.f32 q4, q14, q9; vsub.f32 q6, q14, q9
+    fadd    v8.4s, v14.4s, v18.4s       // q4 = q14 + q9
+    fadd    v9.4s, v14.4s, v19.4s       // Split for d-register access
+    fsub    v12.4s, v14.4s, v18.4s      // q6 = q14 - q9  
+    fsub    v13.4s, v14.4s, v19.4s      // Split for d-register access
+    
+    // ARM32: Individual d-register operations for final results
+    // vadd.f32 d11, d27, d16; vsub.f32 d15, d27, d16
+    fadd    v11.2s, v27.2s, v16.2s      // d11 = d27 + d16
+    fsub    v15.2s, v27.2s, v16.2s      // d15 = d27 - d16
+    
+    // vsub.f32 d10, d26, d17; vadd.f32 d14, d26, d17
+    fsub    v10.2s, v26.2s, v17.2s      // d10 = d26 - d17
+    fadd    v14.2s, v26.2s, v17.2s      // d14 = d26 + d17
+    
+    // Rebuild final q-registers from d-register components
+    mov     v4.d[0], v8.d[0]            // q4 from d8, d9  
+    mov     v4.d[1], v9.d[0]
+    mov     v5.d[0], v10.d[0]           // q5 from d10, d11
+    mov     v5.d[1], v11.d[0]
+    mov     v6.d[0], v12.d[0]           // q6 from d12, d13
+    mov     v6.d[1], v13.d[0]  
+    mov     v7.d[0], v14.d[0]           // q7 from d14, d15
+    mov     v7.d[1], v15.d[0]
+    
+    // ARM32: vswp d9, d10; vswp d13, d14 -> Final d-register swaps
+    orr     v31.16b, v4.16b, v4.16b     // Temp copy for swap
+    mov     v4.d[1], v5.d[0]            // Swap d9, d10  
+    mov     v5.d[0], v31.d[1]
+    
+    orr     v31.16b, v6.16b, v6.16b     // Temp copy for swap
+    mov     v6.d[1], v7.d[0]            // Swap d13, d14
+    mov     v7.d[0], v31.d[1]
+    
+    // ARM32: vstmia lr!, {q4-q7} -> Store final results
+    stp     q4, q5, [x14], #32          // Store q4, q5 to second output address
+    stp     q6, q7, [x14], #32          // Store q6, q7 to second output address
+    
+    // NEW: Verify final stores in oe
+    brk     #0x0E15  // BRK_OE_FINAL_STORES
 
 
   .align 4
@@ -1304,7 +1748,7 @@ _neon64_end:
   .globl  neon64_end
 neon64_end:
 #endif
-  ret
+  nop
 
 
 //

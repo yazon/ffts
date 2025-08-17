@@ -1,31 +1,34 @@
 #!/usr/bin/env bash
-# Minimal ARM64 N=8 test runner
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
-# Config
 TOOLCHAIN=${TOOLCHAIN:-aarch64-linux-gnu}
-CPU_MODEL=${QEMU_CPU:-max}
+QEMU_CPU_MODEL=${QEMU_CPU:-max}
 INSTALL_DIR=${INSTALL_DIR:-$(pwd)/build/arm64}
 
-# Build (dynamic JIT enabled; no static path)
-"$(pwd)/build_arm64.sh" "${TOOLCHAIN}" "${INSTALL_DIR}"
+SKIP_QEMU_TEST=1 ./build_arm64.sh "$TOOLCHAIN" "$INSTALL_DIR"
 
-# Run tests under QEMU
+# Preserve ARM64 test binary
+if [ -f tests/test ]; then
+  cp -f tests/test tests/test_arm64
+fi
+
 if ! command -v qemu-aarch64 >/dev/null 2>&1; then
-  echo "qemu-aarch64 not found" >&2
+  echo "qemu-aarch64 not found; install qemu-user-static or qemu-user" >&2
   exit 1
 fi
 
-export QEMU_CPU="${CPU_MODEL}"
+QEMU_LD_PREFIX=${QEMU_LD_PREFIX:-/usr/aarch64-linux-gnu}
 
-if [ -x tests/test ]; then
-  echo "--- ARM64: N=8 forward (sign=-1) L2 ---"
-  qemu-aarch64 -cpu "${CPU_MODEL}" -L /usr/aarch64-linux-gnu tests/test --l2 8 -1 | cat
-  echo "--- ARM64: N=8 inverse (sign=+1) L2 ---"
-  qemu-aarch64 -cpu "${CPU_MODEL}" -L /usr/aarch64-linux-gnu tests/test --l2 8 1 | cat
-  echo "--- ARM64: N=8 dump forward ---"
-  qemu-aarch64 -cpu "${CPU_MODEL}" -L /usr/aarch64-linux-gnu tests/test --dump-n8 -1 | cat
-else
-  echo "tests/test not found" >&2
-  exit 1
-fi 
+echo "ARM64 N=32 plan dump (no execute)"
+qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L "$QEMU_LD_PREFIX" tests/test_arm64 --dump-plan-32 || true
+
+echo "Running ARM64 N=8 trace (sign=-1)"
+qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L "$QEMU_LD_PREFIX" tests/test_arm64 --trace-n8 -1 || true
+
+echo "Running ARM64 L2 N=8/-1 and N=8/+1"
+qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L "$QEMU_LD_PREFIX" tests/test_arm64 --l2 8 -1 || true
+qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L "$QEMU_LD_PREFIX" tests/test_arm64 --l2 8 1 || true
+
+echo "ARM64 L2 N=32/-1 (may crash)"
+qemu-aarch64 -cpu "$QEMU_CPU_MODEL" -L "$QEMU_LD_PREFIX" tests/test_arm64 --l2 32 -1 || true 

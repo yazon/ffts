@@ -147,22 +147,15 @@ V4SF_IMULI(int inv, V4SF a)
  * Uses FMA intrinsics if available for higher performance.
  */
 static FFTS_ALWAYS_INLINE V4SF
-V4SF_IMUL_TW(V4SF a, V4SF tw)
+V4SF_IMUL(V4SF a, V4SF b)
 {
-    V4SF tw_re = V4SF_DUPLICATE_RE(tw);  // {tr0,tr0,tr1,tr1}
-    V4SF tw_im = V4SF_DUPLICATE_IM(tw);  // {ti0,ti0,ti1,ti1}
-    V4SF re = V4SF_MUL(tw_re, a);
-    V4SF im = V4SF_MUL(tw_im, V4SF_SWAP_PAIRS(a));
+    // Match ARM32 3-arg helper:
+    // re = V4SF_MUL(re, a); im = V4SF_MUL(im, V4SF_SWAP_PAIRS(a)); return re - im;
+    V4SF b_re = V4SF_DUPLICATE_RE(b);  // {br0,br0,br1,br1}
+    V4SF b_im = V4SF_DUPLICATE_IM(b);  // {bi0,bi0,bi1,bi1}
+    V4SF re = V4SF_MUL(b_re, a);
+    V4SF im = V4SF_MUL(b_im, V4SF_SWAP_PAIRS(a));
     return V4SF_SUB(re, im);
-}
-
-/* 3-argument variants to mirror ARM32 macros (preferred by shared code) */
-static FFTS_ALWAYS_INLINE V4SF
-V4SF_IMUL(V4SF d, V4SF re, V4SF im)
-{
-    V4SF x = V4SF_MUL(re, d);
-    V4SF y = V4SF_MUL(im, V4SF_SWAP_PAIRS(d));
-    return V4SF_SUB(x, y);
 }
 
 /*
@@ -171,21 +164,14 @@ V4SF_IMUL(V4SF d, V4SF re, V4SF im)
  * conj(b) is {br0, -bi0, br1, -bi1}
  */
 static FFTS_ALWAYS_INLINE V4SF
-V4SF_IMULJ_TW(V4SF a, V4SF tw)
+V4SF_IMULJ(V4SF a, V4SF b)
 {
-    V4SF tw_re = V4SF_DUPLICATE_RE(tw);
-    V4SF tw_im = V4SF_DUPLICATE_IM(tw);
-    V4SF re = V4SF_MUL(tw_re, a);
-    V4SF im = V4SF_MUL(tw_im, V4SF_SWAP_PAIRS(a));
+    // Match ARM32 3-arg helper: return re + im
+    V4SF b_re = V4SF_DUPLICATE_RE(b);  // {br0,br0,br1,br1}
+    V4SF b_im = V4SF_DUPLICATE_IM(b);  // {bi0,bi0,bi1,bi1}
+    V4SF re = V4SF_MUL(b_re, a);
+    V4SF im = V4SF_MUL(b_im, V4SF_SWAP_PAIRS(a));
     return V4SF_ADD(re, im);
-}
-
-static FFTS_ALWAYS_INLINE V4SF
-V4SF_IMULJ(V4SF d, V4SF re, V4SF im)
-{
-    V4SF x = V4SF_MUL(re, d);
-    V4SF y = V4SF_MUL(im, V4SF_SWAP_PAIRS(d));
-    return V4SF_ADD(x, y);
 }
 
 

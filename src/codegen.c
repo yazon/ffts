@@ -60,6 +60,7 @@ typedef uint8_t insns_t;
 #include <errno.h>
 #include <stddef.h>
 /* #include <stdio.h> */
+#include <stdint.h>
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
@@ -172,6 +173,31 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     start = generate_prologue(&fp, p);
 
 #ifdef HAVE_NEON
+    /* Optional: ARM32 minimal GPR snapshot to plan->buf for diagnostics */
+    do {
+        const char *dbg = getenv("FFTS_DEBUG_BUF");
+        if (dbg && *dbg) {
+            /* r0 holds plan; compute &p->buf into r2, load, and if nonzero store r0(out), r12(offsets), and first two off2 */
+            /* r2 = r0 + offsetof(buf) */
+            ADDI((uint32_t**)&fp, 2, 0, (int32_t)offsetof(struct _ffts_plan_t, buf));
+            /* r2 = [r2] */
+            *fp++ = LDRI(2, 2, 0);
+            /* cmp r2, #0 ; beq skip (+8 insns ahead) */
+            *fp++ = 0xe3520000; /* cmp r2, #0 */
+            *fp++ = 0x0a000008; /* beq +8 */
+            /* str r0, [r2,#0] */
+            *fp++ = 0xe5820000;
+            /* str r12,[r2,#4] */
+            *fp++ = 0xe582c004;
+            /* r3 = [r12,#0] ; r4 = [r12,#4] */
+            *fp++ = 0xe59c3000;
+            *fp++ = 0xe59c4004;
+            /* str r3,[r2,#8] ; str r4,[r2,#12] */
+            *fp++ = 0xe5823008;
+            *fp++ = 0xe5824010;
+        }
+    } while (0);
+
     memcpy(fp, neon_ee, neon_oo - neon_ee);
     if (sign < 0) {
         fp[33] ^= 0x00200000;
@@ -215,38 +241,130 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     /* Ensure X2 holds p->ws base (twiddle base), X1 will be used for stride bytes per base-case */
     ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws));
 
-    loop_count = 4 * p->i0;
+    loop_count = p->i0;
     /* ee/oo leaves use x11 as loop counter */
     generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
+
+
+    /* Optional: stage ws base diagnostic for N=32 */
+    do {
+        const char *dbg_ws = getenv("FFTS_DEBUG_STAGE_WS");
+        if (dbg_ws && *dbg_ws && N == 32) {
+            /* Store stage0 and stage1 twiddle bases and return */
+            ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, buf));
+            /* stage0: ws base in X2 -> buf+80 */
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X2, ARM64_X20, 10 /*80/8*/));
+            /* stage1: load ws_is[1], compute ws + 8*ws_is[1] into X21, store at buf+96 */
+            ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X21, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws_is));
+            /* LDR X22, [X21, #8] -> ws_is[1] (size_t on AArch64) */
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_LDR_X_UOFF(ARM64_X22, ARM64_X21, 1 /*8/8*/));
+            /* ADD X21, X2, X22, LSL #3 => ws + 8*ws_is[1] */
+            arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X21, ARM64_X2, ARM64_X22, ARM64_SHIFT_LSL, 2);
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X21, ARM64_X20, 12 /*96/8*/));
+            generate_epilogue_arm64((ffts_insn_t**)&fp);
+        }
+    } while (0);
+
+    /* Optional: debug leaf prelude for N=32 (disabled for now) */
+    do {
+        const char *dbg_leaf = getenv("FFTS_DEBUG_LEAF");
+        if (dbg_leaf && *dbg_leaf && N == 32) {
+            /* Load plan->buf into x20 */
+            ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, buf));
+            /* Store x3..x10 at buf + 0,8,...,56 (imm is scaled by 8 bytes) */
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X3,  ARM64_X20, 0));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X4,  ARM64_X20, 1));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X5,  ARM64_X20, 2));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X6,  ARM64_X20, 3));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X7,  ARM64_X20, 4));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X8,  ARM64_X20, 5));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X9,  ARM64_X20, 6));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X10, ARM64_X20, 7));
+            /* Store x12 (plan->offsets) at buf+64 (imm = 64/8 = 8) */
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_X_UOFF(ARM64_X12, ARM64_X20, 8));
+            /* Load first two 32-bit off2 values from plan->offsets and store at buf+72, buf+76 */
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_LDR_W_UOFF(21 /*W21*/, ARM64_X12, 0));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_W_UOFF(21 /*W21*/, ARM64_X20, 18 /*72/4*/));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_LDR_W_UOFF(21 /*W21*/, ARM64_X12, 2 /*8/4*/));
+            arm64_emit_instruction((ffts_insn_t**)&fp, ARM64_STR_W_UOFF(21 /*W21*/, ARM64_X20, 19 /*76/4*/));
+            /* Emit epilogue and return early to avoid executing leaves */
+            generate_epilogue_arm64((ffts_insn_t**)&fp);
+        }
+    } while (0);
 
     if (ffts_ctzl(N) & 1) {
         /* x2 = p->ee_ws for ee leaf */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
+
+        /* Ensure x12 points to the start of the offsets stream before ee leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X12, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, offsets));
+
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, p->i1 ? 6 : 0, sign);
 
         if (p->i1) {
-            loop_count += 4 * p->i1;
+            loop_count = p->i1;
             /* refresh loop counter before next oo leaf */
             generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
             generate_leaf_oo_arm64((ffts_insn_t**)&fp, N, loop_count, sign);
         }
 
         loop_count += 4;
-        /* x11 = p->oe_ws for oe leaf (twiddle pointer). Do NOT overwrite x11 with loop count. */
+        /* LUT for oe leaf: default x11; allow override to x12 if FFTS_OE_WS_IN_X12=1 */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, oe_ws));
+
         generate_leaf_oe_arm64((ffts_insn_t**)&fp, N, 0, sign);
     } else {
         /* x2 = p->ee_ws for ee leaf */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
+
+        /* Recompute stream pointers x3..x10 with ARM32-compatible register order and stride.
+           ARM32 order: r3=0*N, r7=1*N, r5=2*N, r10=3*N, r4=4*N, r8=5*N, r6=6*N, r9=7*N; each step is N*8 bytes */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, N));
+        /* Base input pointer preserved in x21 */
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X21);                                              /* x3  = base + 0*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X21, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x7  = base + 1*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x5  = base + 2*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x10 = base + 3*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x4  = base + 4*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x8  = base + 5*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x6  = base + 6*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x9  = base + 7*N */
+
+        /* Ensure x12 points to the start of the offsets stream before ee leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X12, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, offsets));
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, N >= 256 ? 2 : 8, sign);
 
         loop_count += 4;
-        /* x11 = p->eo_ws for eo leaf (twiddle pointer). Do NOT overwrite x11 with loop count. */
-        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, eo_ws));
+        /* LUT for eo leaf: default x11; allow override to x12 if FFTS_OE_WS_IN_X12=1 */
+        {
+            ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, eo_ws));
+            const char *oe_in_x12 = getenv("FFTS_OE_WS_IN_X12");
+            if (oe_in_x12 && *oe_in_x12 && N == 32) {
+                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X12, ARM64_X11);
+            } else {
+                /* CRITICAL FIX: Set x12 to point to offsets array + 2 entries (16 bytes) for 
+                
+                
+                / (uint32_t)offsetof(struct _ffts_plan_t, offsets));
+                arm64_emit_add_imm((ffts_insn_t**)&fp, 1, ARM64_X12, ARM64_X12, 16); // Skip 2 x 8-byte entries */
+            }
+        }
+
+        /* Recompute stream pointers x3..x10 again before eo leaf with ARM32-compatible order and N*8 stride. */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, N));
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X21);                                              /* x3  = base + 0*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X21, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x7  = base + 1*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x5  = base + 2*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x10 = base + 3*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x4  = base + 4*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x8  = base + 5*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x6  = base + 6*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x9  = base + 7*N */
+
         generate_leaf_eo_arm64((ffts_insn_t**)&fp, N, 0, sign);
 
         if (p->i1) {
-            loop_count += 4 * p->i1;
+            loop_count = p->i1;
             /* refresh loop counter for oo */
             generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
             generate_leaf_oo_arm64((ffts_insn_t**)&fp, N, loop_count, sign);
@@ -254,7 +372,7 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
     }
 
     if (p->i1) {
-        loop_count += 4 * p->i1;
+        loop_count = p->i1;
         /* ee uses x11 as loop counter again */
         generate_leaf_init_arm64((ffts_insn_t**)&fp, loop_count);
 
@@ -287,6 +405,8 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
 
         /* x2 = p->ee_ws for final ee leaf */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ee_ws));
+        /* Ensure x12 points to the start of the offsets stream before final ee leaf */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X12, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, offsets));
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, 0, sign);
     }
 
@@ -307,9 +427,23 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         } else {
             int offset = (4 * pps[1]) - pAddr;
             if (offset) {
-                /* Add offset to output and input data pointers */
-                ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X0, offset);
-                ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X22, ARM64_X22, offset);
+                /* Add offset to output and input data pointers (handle large/negative immediates) */
+                int rem = offset;
+                if (rem > 0) {
+                    while (rem > 0) {
+                        int chunk = rem > 0x0fff ? 0x0fff : rem;
+                        ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X0,  ARM64_X0,  chunk);
+                        ARM64_ADD_X((ffts_insn_t**)&fp, ARM64_X22, ARM64_X22, chunk);
+                        rem -= chunk;
+                    }
+                } else { /* rem < 0 */
+                    while (rem < 0) {
+                        int chunk = (-rem) > 0x0fff ? 0x0fff : (-rem);
+                        ARM64_SUB_X((ffts_insn_t**)&fp, ARM64_X0,  ARM64_X0,  chunk);
+                        ARM64_SUB_X((ffts_insn_t**)&fp, ARM64_X22, ARM64_X22, chunk);
+                        rem += chunk;
+                    }
+                }
             }
 
             if (pps[0] > leaf_N && pps[0] - pN) {
@@ -324,7 +458,17 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
             }
         }
 
-        ws_is = 8 * p->ws_is[ffts_ctzl(pps[0] / leaf_N) - 1];
+        size_t ws_index = ffts_ctzl(pps[0] / leaf_N) - 1;
+        ws_is = 8 * p->ws_is[ws_index];
+#ifdef __aarch64__
+        /* Temporary diagnostic: allow alt scaling for second LUT at N=32 */
+        if (N == 32 && ws_index == 1) {
+            const char *alt4 = getenv("FFTS_WSIS_ALT4");
+            if (alt4 && *alt4) {
+                ws_is = 4 * p->ws_is[ws_index];
+            }
+        }
+#endif
         /* Reset twiddle base to plan->ws before each base-case stage */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X2, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, ws));
         if (ws_is) {
@@ -348,13 +492,18 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
             if (!pps[2]) {
                 /* Map base-case expectation: x0 must be input base; preserve current x0 in x20 */
                 /* x2 already set to plan->ws + stage offset for x8_t */
+                /* If diagnostic is enabled for N=32, return early before executing x8_t */
+                if (N == 32 && getenv("FFTS_DEBUG_EARLY_RETURN_X8T")) {
+                    generate_epilogue_arm64((ffts_insn_t**)&fp);
+                }
                 ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X0);
-                ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X22);
+                /* x8_t expects x1 = bytes per stream = N (since each stream has N/8 complex pairs) */
+                ARM64_MOV_IMM64((ffts_insn_t**)&fp, ARM64_X1, (uint64_t)N);
                 extern const uint8_t neon64_x8_t[];
                 extern const uint8_t neon64_ee[];
                 uint32_t *dst = arm64_copy_blob((uint32_t**)&fp, neon64_x8_t, neon64_ee);
-                arm64_patch_neon64_x8_t(dst, sign);
-                /* Restore x0 to prior base (out/current destination base) */
+                // arm64_patch_neon64_x8_t(dst, sign);
+                /* x0 remains the output base; restore is a no-op */
                 ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X0, ARM64_X20);
             } else {
                 /* Call 8-point base case */
@@ -494,6 +643,8 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         count += 4;
         pps += 2;
     }
+
+    generate_epilogue(&fp);
 #endif
 
 #ifdef __arm__
@@ -524,7 +675,7 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
                 fp[48] ^= 0x00200000;
                 fp[57] ^= 0x00200000;
             }
-            fp += (neon_eo - neon_oo) / 4;
+            fp += (neon_oo - neon_oo) / 4;
         }
 
         *fp = LDRI(11, 1, ((uint32_t)&p->oe_ws) - ((uint32_t)p));

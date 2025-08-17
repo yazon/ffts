@@ -184,6 +184,11 @@ struct _ffts_plan_t {
 
     void *transpose_buf;
 
+#ifdef __aarch64__
+    /* Optional: debug vector dump pointer used by AArch64 ee leaf when non-null */
+    void *debug_vec_dump;
+#endif
+
     /**
      * Pointer to the destroy function
      * to clean up the plan after use

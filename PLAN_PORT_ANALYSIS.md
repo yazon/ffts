@@ -143,6 +143,19 @@ F) Focused path for N=8/N=16 (PRIORITY)
   - Instrument first iteration to compare twiddles (v2/v3) and outputs against ARM32.
   - Expectation: N=8,16 L2 → ~1e-8 after LUT/sign parity fix.
 
+### H) N=8 Diagnostic Trace (Added 2025-08-10)
+- Added `tests/test --trace-n8 <sign>` that prints:
+  - First-stage twiddles (16 floats) from `p->ws + ws_is[0]*8`
+  - Stride assumptions for ARM32 vs ARM64 and resulting stream offsets
+  - Input buffer before and output buffer after execution
+- Added scripts for reproducibility:
+  - `scripts/run_arm32_tests.sh` and `scripts/run_arm64_tests.sh` to build/run under QEMU
+- Step-by-step evidence gathering:
+  1) Capture ARM32 trace (sign=-1) and verify L2 ~1e-8; save twiddles and outputs
+  2) Capture ARM64 trace (sign=-1); compare twiddles/outputs to ARM32
+  3) Applied fix: ARM64 complex multiply parity in `V4SF_K_N` to use re/im directly with data vectors (matches ARM32 macros-neon semantics). Result: N=8/16 L2 now ~1e-8.
+  4) Next: Investigate N≥32 segfault with leaf-entry instrumentation (dump x3..x10, x12 offsets, first few computed store addresses) to pinpoint the failing pointer.
+
 ---
 
 ## Phase 3: Validation & Review

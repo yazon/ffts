@@ -46,23 +46,18 @@ V4SF_K_N(int inv,
     uk  = *r0;
     uk2 = *r1;
 
-    /*
-     * ARM64 uses the new 2-argument complex-multiply helpers that expect
-     * an interleaved {re,im,re,im} vector. 32-bit NEON keeps the original
-     * 3-argument helpers (dst, re, im).  Select the proper call at compile
-     * time so both architectures build.
-     */
-#ifdef HAVE_ARM64
-    /* re = {re0,re0,re1,re1},  im = {im0,im0,im1,im1}
-     * Build interleaved twiddle vector {re0,im0,re1,im1} from low half only.
-     */
-    float32x2_t re_low  = vget_low_f32(re);   /* r0,r0 */
-    float32x2_t im_low  = vget_low_f32(im);   /* i0,i0 */
-    float32x2_t tw_lo   = vzip1_f32(re_low, im_low);    /* {r0,i0} */
-    float32x2_t tw_hi   = vzip2_f32(re_low, im_low);    /* {r1,i1} */
-    V4SF tw = vcombine_f32(tw_lo, tw_hi);
-    zk_p = V4SF_IMUL(*r2, tw);
-    zk_n = V4SF_IMULJ(*r3, tw);
+    /* Match ARM32 semantics on all architectures. For ARM64, compute directly
+     * using re/im vectors rather than attempting to interleave twiddles. */
+#if defined(HAVE_ARM64) && defined(__aarch64__)
+    {
+        V4SF re_p = V4SF_MUL(re, *r2);
+        V4SF im_p = V4SF_MUL(im, V4SF_SWAP_PAIRS(*r2));
+        zk_p = V4SF_SUB(re_p, im_p);
+
+        V4SF re_n = V4SF_MUL(re, *r3);
+        V4SF im_n = V4SF_MUL(im, V4SF_SWAP_PAIRS(*r3));
+        zk_n = V4SF_ADD(re_n, im_n);
+    }
 #else
     zk_p = V4SF_IMUL(*r2, re, im);
     zk_n = V4SF_IMULJ(*r3, re, im);

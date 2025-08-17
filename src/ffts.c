@@ -44,6 +44,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "codegen.h"
 #endif
 
+// Debug globals for optional store snapshots (ARM32/ARM64)
+#if defined(__arm__) || defined(__aarch64__)
+volatile uint32_t ffts_arm_debug_stores_enabled = 0;
+volatile uint8_t *ffts_arm_debug_buf = (uint8_t*)0;
+#endif
+
 #if defined(HAVE_ARM64) && defined(__aarch64__)
 #include "ffts_runtime_arm64.h"
 #endif
@@ -58,6 +64,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #if HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif
+#endif
+
+#include <assert.h>
+#include <errno.h>
+#include <stddef.h>
+#include <string.h>
+
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
+#ifdef HAVE_STRING_H
+#include <string.h>
 #endif
 
 #if defined(HAVE_NEON)
@@ -407,6 +426,30 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
         stride >>= 1;
     }
 
+#if defined(__aarch64__)
+    /* Provide explicit per-leaf twiddle bases for ARM64 */
+    if (n_luts) {
+        uint8_t *ws_base = (uint8_t*)p->ws;
+        size_t off0 = 8 * p->ws_is[0];
+        p->ee_ws = ws_base + off0;
+        if (n_luts > 1) {
+            size_t off1 = 8 * p->ws_is[1];
+            p->oe_ws = ws_base + off1;
+            p->eo_ws = ws_base + off1;
+        } else {
+            p->oe_ws = p->ee_ws;
+            p->eo_ws = p->ee_ws;
+        }
+    }
+#endif
+
+#if defined(__aarch64__)
+    /* AArch64 parity fix for N=32: align ws_is[1] with ARM32 NEON layout */
+    if (N == 32 && n_luts >= 2 && p->ws_is) {
+        p->ws_is[1] >>= 1;
+    }
+#endif
+
 #if defined(HAVE_NEON)
     if (sign < 0) {
         p->oe_ws = (void*)(w_data + 4);
@@ -478,6 +521,20 @@ ffts_init_1d(size_t N, int sign)
             goto cleanup;
         }
 
+        /* Debug: allocate plan->buf for JIT debug stores when requested */
+        {
+            const char *dbg_leaf = getenv("FFTS_DEBUG_LEAF");
+            const char *dbg_buf  = getenv("FFTS_DEBUG_BUF");
+            if ((dbg_leaf || dbg_buf) && N == 32) {
+                if (!p->buf) {
+                    p->buf = ffts_aligned_malloc(128);
+                }
+                if (p->buf) {
+                    memset(p->buf, 0, 128);
+                }
+            }
+        }
+
         p->i0 = N/leaf_N/3 + 1;
         p->i1 = p->i2 = N/leaf_N/3;
         if ((N/leaf_N) % 3 > 1) {
@@ -511,45 +568,51 @@ ffts_init_1d(size_t N, int sign)
         }
 #endif
 
-        /* allocate code/function buffer */
-        p->transform_base = ffts_vmem_alloc(p->transform_size);
-        if (!p->transform_base) {
-            goto cleanup;
-        }
+        /* Allow disabling JIT code generation via env var for diagnostics */
+        if (!getenv("FFTS_NOJIT")) {
+            /* allocate code/function buffer */
+            p->transform_base = ffts_vmem_alloc(p->transform_size);
+            if (!p->transform_base) {
+                goto cleanup;
+            }
 
-        /* generate code */
-        p->transform = ffts_generate_func_code(p, N, leaf_N, sign);
-        if (!p->transform) {
-            goto cleanup;
-        }
+            /* generate code */
+            p->transform = ffts_generate_func_code(p, N, leaf_N, sign);
+            if (!p->transform) {
+                goto cleanup;
+            }
 
 #if defined(__aarch64__)
-        {
-            const char *dbg = getenv("FFTS_DEBUG_JIT");
-            if (dbg) {
-                uint32_t *w = (uint32_t*)p->transform_base;
-                size_t dump_words = 256; /* 1 KB */
-                fprintf(stderr, "[ARM64][jit] base=%p size=%zu bytes\n", p->transform_base, (size_t)p->transform_size);
-                for (size_t i = 0; i < dump_words; ++i) {
-                    fprintf(stderr, "[ARM64][jit] %04zu: %08x\n", i, w[i]);
+            {
+                const char *dbg = getenv("FFTS_DEBUG_JIT");
+                if (dbg) {
+                    uint32_t *w = (uint32_t*)p->transform_base;
+                    size_t dump_words = 256; /* 1 KB */
+                    fprintf(stderr, "[ARM64][jit] base=%p size=%zu bytes\n", p->transform_base, (size_t)p->transform_size);
+                    for (size_t i = 0; i < dump_words; ++i) {
+                        fprintf(stderr, "[ARM64][jit] %04zu: %08x\n", i, w[i]);
+                    }
                 }
             }
-        }
 #endif
 
-        /* enable execution with read access for the block */
-        if (ffts_allow_execute(p->transform_base, p->transform_size)) {
-            goto cleanup;
-        }
+            /* enable execution with read access for the block */
+            if (ffts_allow_execute(p->transform_base, p->transform_size)) {
+                goto cleanup;
+            }
 
-        /* flush from the instruction cache */
-        if (ffts_flush_instruction_cache(p->transform_base, p->transform_size)) {
-            goto cleanup;
-        }
+            /* flush from the instruction cache */
+            if (ffts_flush_instruction_cache(p->transform_base, p->transform_size)) {
+                goto cleanup;
+            }
 
-        const char *dbg_jit_ready = getenv("FFTS_DEBUG_JIT");
-        if (dbg_jit_ready) {
-            fprintf(stderr, "[ARM64][jit-ready] N=%zu leaf_N=%zu base=%p size=%zu\n", N, leaf_N, p->transform_base, (size_t)p->transform_size);
+            const char *dbg_jit_ready = getenv("FFTS_DEBUG_JIT");
+            if (dbg_jit_ready) {
+                fprintf(stderr, "[ARM64][jit-ready] N=%zu leaf_N=%zu base=%p size=%zu\n", N, leaf_N, p->transform_base, (size_t)p->transform_size);
+            }
+        } else {
+            /* JIT disabled intentionally; leave transform NULL for plan metadata dump */
+            p->transform = NULL;
         }
 #endif
     } else {

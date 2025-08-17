@@ -96,6 +96,23 @@ arm64_generate_prologue(arm64instr_t **p, ARM64Reg data_ptr, ARM64Reg lut_ptr)
     /* stp x21, x22, [sp, #-16]! */
     arm64_emit_instruction(p, 0xa9bf5bf5);
     
+    /* stp x23, x24, [sp, #-16]! */
+    arm64_emit_instruction(p, 0xa9bf63f7);
+
+    /* stp x25, x26, [sp, #-16]! */
+    arm64_emit_instruction(p, 0xa9bf6bf9);
+
+    /* stp x27, x28, [sp, #-16]! */
+    arm64_emit_instruction(p, 0xa9bf73fb);
+
+    /* Preserve callee-saved SIMD registers q8..q15 (AAPCS64) */
+    /* Allocate 128 bytes and spill pairs at 0,32,64,96 */
+    ARM64_SUB_X(p, ARM64_SP, ARM64_SP, 128);
+    ARM64_STP_Q(p, ARM64_Q8,  ARM64_Q9,  ARM64_SP, 0);
+    ARM64_STP_Q(p, ARM64_Q10, ARM64_Q11, ARM64_SP, 2);
+    ARM64_STP_Q(p, ARM64_Q12, ARM64_Q13, ARM64_SP, 4);
+    ARM64_STP_Q(p, ARM64_Q14, ARM64_Q15, ARM64_SP, 6);
+    
     /* Set up function parameters in expected registers */
     if (data_ptr != ARM64_X0) {
         ARM64_MOV_X(p, data_ptr, ARM64_X0);
@@ -109,7 +126,23 @@ arm64_generate_prologue(arm64instr_t **p, ARM64Reg data_ptr, ARM64Reg lut_ptr)
 void 
 arm64_generate_epilogue(arm64instr_t **p)
 {
+    /* Restore callee-saved SIMD registers q8..q15 and deallocate space */
+    ARM64_LDP_Q(p, ARM64_Q14, ARM64_Q15, ARM64_SP, 6);
+    ARM64_LDP_Q(p, ARM64_Q12, ARM64_Q13, ARM64_SP, 4);
+    ARM64_LDP_Q(p, ARM64_Q10, ARM64_Q11, ARM64_SP, 2);
+    ARM64_LDP_Q(p, ARM64_Q8,  ARM64_Q9,  ARM64_SP, 0);
+    ARM64_ADD_X(p, ARM64_SP, ARM64_SP, 128);
+
     /* Restore callee-saved registers */
+    /* ldp x27, x28, [sp], #16 */
+    arm64_emit_instruction(p, 0xa8c173fb);
+
+    /* ldp x25, x26, [sp], #16 */
+    arm64_emit_instruction(p, 0xa8c16bf9);
+
+    /* ldp x23, x24, [sp], #16 */
+    arm64_emit_instruction(p, 0xa8c163f7);
+
     /* ldp x21, x22, [sp], #16 */
     arm64_emit_instruction(p, 0xa8c15bf5);
     

@@ -20,6 +20,10 @@
 
 #ifdef __aarch64__
 
+// Debug globals (can be set by C before executing plan)
+volatile uint32_t ffts_arm64_debug_stores_enabled = 0;
+volatile uint8_t *ffts_arm64_debug_buf = (uint8_t*)0;
+
 #ifdef __linux__
 #include <sys/auxv.h>
 #include <asm/hwcap.h>

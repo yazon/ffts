@@ -507,10 +507,33 @@ ffts_init_offsets(size_t N, size_t leaf_N)
         }
     }
 
+    /* Optional diagnostics: dump raw tmp pairs prior to sort */
+    {
+        const char *dbg = getenv("FFTS_DEBUG_OFFSETS");
+        if (dbg && *dbg && N == 32) {
+            fprintf(stderr, "OFFSETS-RAW N=%zu leaf_N=%zu pairs=%zu\n", N, leaf_N, N/leaf_N);
+            for (i = 0; i < 2*N/leaf_N; i += 2) {
+                fprintf(stderr, "  raw[%02zu]: in2=%td out=%td\n", i/2, tmp[i], tmp[i+1]);
+            }
+        }
+    }
+
     qsort(tmp, N/leaf_N, 2 * sizeof(*tmp), ffts_compare_offsets);
 
     for (i = 0; i < N/leaf_N; i++) {
         offsets[i] = 2 * tmp[2*i + 1];
+    }
+
+    /* Optional diagnostics: dump final offsets (off2 values) */
+    {
+        const char *dbg = getenv("FFTS_DEBUG_OFFSETS");
+        if (dbg && *dbg && N == 32) {
+            fprintf(stderr, "OFFSETS-FINAL off2[0..%zu):", N/leaf_N);
+            for (i = 0; i < N/leaf_N; i++) {
+                fprintf(stderr, " %td", offsets[i]);
+            }
+            fprintf(stderr, "\n");
+        }
     }
 
     free(tmp);

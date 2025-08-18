@@ -299,6 +299,18 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         /* Ensure x12 points to the start of the offsets stream before ee leaf */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X12, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, offsets));
 
+        /* Rebuild stream pointers x3..x10 for ee with ARM32 order and stride = N*8 bytes */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, N));
+        /* Base input pointer is in X22 at this point */
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3,  ARM64_X22);                                              /* x3  = base + 0*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X22, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x7  = base + 1*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x5  = base + 2*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x10 = base + 3*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x4  = base + 4*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x8  = base + 5*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x6  = base + 6*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x9  = base + 7*N */
+
         generate_leaf_ee_arm64((ffts_insn_t**)&fp, N, p->i1 ? 6 : 0, sign);
 
         if (p->i1) {
@@ -312,6 +324,18 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         /* LUT for oe leaf: default x11; allow override to x12 if FFTS_OE_WS_IN_X12=1 */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X11, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, oe_ws));
 
+        /* CRITICAL: After EE, OE reads from the EE output buffer (x0).
+           Rebuild stream pointers x3..x10 based on x0 with stride = N*8 bytes. */
+        ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, N));
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3,  ARM64_X0);                                               /* x3  = base + 0*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X0, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x7  = base + 1*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x5  = base + 2*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x10 = base + 3*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x4  = base + 4*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x8  = base + 5*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x6  = base + 6*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x9  = base + 7*N */
+
         generate_leaf_oe_arm64((ffts_insn_t**)&fp, N, 0, sign);
     } else {
         /* x2 = p->ee_ws for ee leaf */
@@ -320,15 +344,15 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
         /* Recompute stream pointers x3..x10 with ARM32-compatible register order and stride.
            ARM32 order: r3=0*N, r7=1*N, r5=2*N, r10=3*N, r4=4*N, r8=5*N, r6=6*N, r9=7*N; each step is N*8 bytes */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, N));
-        /* Base input pointer preserved in x21 */
-        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X21);                                              /* x3  = base + 0*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X21, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x7  = base + 1*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x5  = base + 2*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x10 = base + 3*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x4  = base + 4*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x8  = base + 5*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x6  = base + 6*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x9  = base + 7*N */
+        /* Base input pointer is X22 here as well */
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X22);                                              /* x3  = base + 0*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X22, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x7  = base + 1*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x5  = base + 2*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x10 = base + 3*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x4  = base + 4*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x8  = base + 5*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x6  = base + 6*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x9  = base + 7*N */
 
         /* Ensure x12 points to the start of the offsets stream before ee leaf */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X12, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, offsets));
@@ -352,14 +376,14 @@ transform_func_t ffts_generate_func_code(ffts_plan_t *p, size_t N, size_t leaf_N
 
         /* Recompute stream pointers x3..x10 again before eo leaf with ARM32-compatible order and N*8 stride. */
         ARM64_LDRI_X((ffts_insn_t**)&fp, ARM64_X20, ARM64_X19, (uint32_t)offsetof(struct _ffts_plan_t, N));
-        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X21);                                              /* x3  = base + 0*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X21, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x7  = base + 1*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x5  = base + 2*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x10 = base + 3*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 2); /* x4  = base + 4*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x8  = base + 5*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x6  = base + 6*N */
-        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 2); /* x9  = base + 7*N */
+        ARM64_MOV_X((ffts_insn_t**)&fp, ARM64_X3, ARM64_X22);                                              /* x3  = base + 0*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X7,  ARM64_X22, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x7  = base + 1*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X5,  ARM64_X7,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x5  = base + 2*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X10, ARM64_X5,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x10 = base + 3*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X4,  ARM64_X10, ARM64_X20, ARM64_SHIFT_LSL, 3); /* x4  = base + 4*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X8,  ARM64_X4,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x8  = base + 5*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X6,  ARM64_X8,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x6  = base + 6*N */
+        arm64_emit_add_shifted_reg((ffts_insn_t**)&fp, ARM64_X9,  ARM64_X6,  ARM64_X20, ARM64_SHIFT_LSL, 3); /* x9  = base + 7*N */
 
         generate_leaf_eo_arm64((ffts_insn_t**)&fp, N, 0, sign);
 

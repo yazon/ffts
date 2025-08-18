@@ -239,12 +239,12 @@ printf "=== OE_FINAL_STORES ===\n"
 printf "Final stores to x14=%#llx\n", (unsigned long long)$x14
 printf "q4_re(v8): %f %f %f %f\n", $v8.s.f[0], $v8.s.f[1], $v8.s.f[2], $v8.s.f[3]
 printf "q4_im(v9): %f %f %f %f\n", $v9.s.f[0], $v9.s.f[1], $v9.s.f[2], $v9.s.f[3]
-printf "q5_re(v11): %f %f %f %f\n", $v11.s.f[0], $v11.s.f[1], $v11.s.f[2], $v11.s.f[3]
-printf "q5_im(v10): %f %f %f %f\n", $v10.s.f[0], $v10.s.f[1], $v10.s.f[2], $v10.s.f[3]
+printf "q5_re(v10): %f %f %f %f\n", $v10.s.f[0], $v10.s.f[1], $v10.s.f[2], $v10.s.f[3]
+printf "q5_im(v11): %f %f %f %f\n", $v11.s.f[0], $v11.s.f[1], $v11.s.f[2], $v11.s.f[3]
 printf "q6_re(v12): %f %f %f %f\n", $v12.s.f[0], $v12.s.f[1], $v12.s.f[2], $v12.s.f[3]
 printf "q6_im(v13): %f %f %f %f\n", $v13.s.f[0], $v13.s.f[1], $v13.s.f[2], $v13.s.f[3]
-printf "q7_re(v15): %f %f %f %f\n", $v15.s.f[0], $v15.s.f[1], $v15.s.f[2], $v15.s.f[3]
-printf "q7_im(v14): %f %f %f %f\n", $v14.s.f[0], $v14.s.f[1], $v14.s.f[2], $v14.s.f[3]
+printf "q7_re(v14): %f %f %f %f\n", $v14.s.f[0], $v14.s.f[1], $v14.s.f[2], $v14.s.f[3]
+printf "q7_im(v15): %f %f %f %f\n", $v15.s.f[0], $v15.s.f[1], $v15.s.f[2], $v15.s.f[3]
 set $pre14 = (unsigned long long)$x14 - 64
 printf "mem[x14-64 .. x14):\n"
 x/16gx $pre14

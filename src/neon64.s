@@ -841,7 +841,7 @@ neon64_ee:
     // Load offset values
         // ARM32: ldr r2, [r12], #4
     // AArch64: offsets[] elements are 64-bit; load 32-bit but advance by 8 bytes per element
-    ldr   w2, [x12], #8               // Load first offset (32-bit), step 8
+    ldr   w2, [x12], #4               // Load first offset (32-bit), step 4
     
     // NEW: Verify offset load
     brk   #0xEE06   // BRK_EE_OFFSET1_LOADED
@@ -864,7 +864,7 @@ neon64_ee:
     
         // ARM32: ldr lr, [r12], #4
     // AArch64: offsets[] elements are 64-bit; step by 8 bytes as well
-    ldr   w16, [x12], #8              // Load second offset (32-bit), step 8
+    ldr   w16, [x12], #4              // Load second offset (32-bit), step 4
     
     // NEW: Verify second offset load
     brk   #0xEE07   // BRK_EE_OFFSET2_LOADED
@@ -1041,8 +1041,8 @@ neon64_oo:
   trn2   v2.4s, v24.4s, v2.4s
 
   // Load offsets and calculate output addresses
-  ldr    x2, [x12], #8                       // Load offset 1 (64-bit)
-  ldr    x16, [x12], #8                     // Load offset 2 (64-bit)
+  ldr    x2, [x12], #4                       // Load offset 1 (64-bit)
+  ldr    x16, [x12], #4                     // Load offset 2 (64-bit)
 
   // Second complex rotation, for q4, q5, q6, q7
   // vadd.f32 q4, q12, q11
@@ -1164,11 +1164,11 @@ neon64_eo:
   fadd   v10.2s, v22.2s, v21.2s      // 64-bit vector add
 
   // ldr r2, [r12], #4 -> ldr w2, [x12], #8
-  ldr    w2, [x12], #8                // Load 32-bit offset into w2, advance x12 by 8 (64-bit elements)
+  ldr    w2, [x12], #4                // Load 32-bit offset into w2, advance x12 by 4 (32-bit elements)
   // vld1.32 {d20, d21}, [r11, :64] -> ldp d20, d21, [x11]
   ldp    d20, d21, [x11]             // Load pair of D registers (twiddle factors)
   // ldr lr, [r12], #4 -> ldr w16, [x12], #8
-  ldr    w16, [x12], #8                // Load 32-bit offset into w16, advance x12 by 8 (64-bit elements)
+  ldr    w16, [x12], #4                // Load 32-bit offset into w16, advance x12 by 4 (32-bit elements)
 
   // Pack q4 (v8) with d8 (low) and d9 (high), and q5 (v10) with d10 (low) and d11 (high)
   // ARM32 expects q4={d8,d9} and q5={d10,d11} before vtrn/vswp/store.
@@ -1379,6 +1379,25 @@ neon64_oe:
     // PHASE 2: Register Reorganization (ARM32 Lines 562-564)
     // Copy d-register halves to build q12 from q8 and q10 components
     // ================================================================================
+    // Build q12 (v12) from halves of q8 (v8) and q10 (v10), then apply 32-bit transposes
+    // ARM32 equivalents:
+    //   vorr d25, d17 ; vorr d24, d20 ; vorr d20, d16 ; vtrn.32 d24, d25 ; vtrn.32 d20, d21
+    // q12 low half (d24) <- q10.low (v10.d[0]); q12 high half (d25) <- q8.high (v8.d[1])
+    mov     v16.d[0], v10.d[0]
+    mov     v17.d[0], v8.d[1]
+    // Transpose 32-bit lanes between the two 64-bit halves (operate on low 64b with .2s)
+    trn1    v18.2s, v16.2s, v17.2s
+    trn2    v19.2s, v16.2s, v17.2s
+    mov     v12.d[0], v18.d[0]
+    mov     v12.d[1], v19.d[0]
+
+    // Rebuild q10 (v10) low/high halves by transposing q8.low (v8.d[0]) with q10.high (v10.d[1])
+    mov     v16.d[0], v8.d[0]
+    mov     v17.d[0], v10.d[1]
+    trn1    v18.2s, v16.2s, v17.2s
+    trn2    v19.2s, v16.2s, v17.2s
+    mov     v10.d[0], v18.d[0]
+    mov     v10.d[1], v19.d[0]
 
     // ================================================================================
     // PHASE 3: First Butterfly Computations (ARM32 Lines 565-566)
@@ -1399,18 +1418,13 @@ neon64_oe:
     // ================================================================================
     
     // ARM32: ldr r2, [r12], #4 -> Load first offset
-    ldr     w2, [x12], #8               // Load 32-bit offset, advance by 8 (64-bit elements)
+    ldr     w2, [x12], #4               // Load 32-bit offset, advance by 4 (32-bit elements)
     brk     #0x0E10  // BRK_OE_OFF2_LOADED
 
 5:
     
-    // ARM32: vtrn.32 d24, d25 -> Transpose 32-bit elements
-    trn1    v16.4s, v24.4s, v25.4s      // Transpose d24, d25
-    trn2    v25.4s, v24.4s, v25.4s
-    mov     v24.16b, v16.16b
-    
     // ARM32: ldr lr, [r12], #4 -> Load second offset  
-        ldr     w14, [x12], #8              // Load second 32-bit offset
+        ldr     w14, [x12], #4              // Load second 32-bit offset
     
 6:
     // ARM32: add r2, r0, r2, lsl #2 -> Calculate first output address
@@ -1672,11 +1686,21 @@ neon64_oe:
     // REMOVED: mov     v6.16b, v12.16b             // q6 from final result
     // REMOVED: mov     v7.16b, v13.16b             // q7 from final result
     
-    // Store final results using 4-lane operations 
-    //st2 {v4.4s, v5.4s}, [x14], #32      // Store q4/q5 (4 complex numbers)
-    //st2 {v6.4s, v7.4s}, [x14], #32      // Store q6/q7 (4 complex numbers)
-    st2 {v8.4s, v9.4s}, [x14], #32        // Store q8/q9 (4 complex numbers)
-    st2 {v10.4s, v11.4s}, [x14], #32      // Store q11/q10 (4 complex numbers)
+    // Store final results using 4-lane operations in q4..q7 order
+    // q4 is in v8 (real) and v9 (imag)
+    st2 {v8.4s,  v9.4s},  [x14], #32      // Store q4
+    // q5 is in v11 (real) and v10 (imag) -> swap whole vectors so real,imag are {v10,v11}
+    orr     v31.16b, v10.16b, v10.16b
+    mov     v10.16b,  v11.16b
+    mov     v11.16b,  v31.16b
+    st2 {v10.4s, v11.4s}, [x14], #32      // Store q5
+    // q6 is in {v12 (real), v13 (imag)} and already consecutive
+    st2 {v12.4s, v13.4s}, [x14], #32      // Store q6
+    // q7 is in v15 (real) and v14 (imag) -> swap whole vectors so real,imag are {v14,v15}
+    orr     v31.16b, v14.16b, v14.16b
+    mov     v14.16b,  v15.16b
+    mov     v15.16b,  v31.16b
+    st2 {v14.4s, v15.4s}, [x14], #32      // Store q7
     
     // NEW: Verify final stores in oe
     brk     #0x0E15  // BRK_OE_FINAL_STORES

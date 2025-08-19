@@ -226,8 +226,11 @@ condition 19 (*(unsigned int*)$pc & 0xffe0001f) == 0xd4200000 && ((*(unsigned in
 commands 19
 printf "=== OE_FIRST_STORE ===\n"
 printf "First store to x2=%#llx\n", (unsigned long long)$x2
-printf "x2(now)=%#llx next store window mem[x2..]:\n", (unsigned long long)$x2
-x/8gx $x2
+set $x2_prev = (unsigned long long)$x2 - 32
+printf "just-written mem[x2-32 .. x2):\n"
+x/4gx $x2_prev
+printf "next store window mem[x2 .. x2+32):\n"
+x/4gx $x2
 set $pc = $pc + 4
 continue
 end
@@ -494,6 +497,8 @@ printf "=== OE_PRE_STORE_Q01 ===\n"
 printf "x2=%#llx\n", (unsigned long long)$x2
 printf "q0: %f %f %f %f\n", $v0.s.f[0], $v0.s.f[1], $v0.s.f[2], $v0.s.f[3]
 printf "q1: %f %f %f %f\n", $v1.s.f[0], $v1.s.f[1], $v1.s.f[2], $v1.s.f[3]
+printf "dest pre-store mem[x2..x2+32):\n"
+x/4gx $x2
 set $pc = $pc + 4
 continue
 end
@@ -506,6 +511,8 @@ printf "=== OE_PRE_STORE_Q23 ===\n"
 printf "x2=%#llx\n", (unsigned long long)$x2
 printf "q2: %f %f %f %f\n", $v2.s.f[0], $v2.s.f[1], $v2.s.f[2], $v2.s.f[3]
 printf "q3: %f %f %f %f\n", $v3.s.f[0], $v3.s.f[1], $v3.s.f[2], $v3.s.f[3]
+printf "dest pre-store mem[x2..x2+32):\n"
+x/4gx $x2
 set $pc = $pc + 4
 continue
 end
@@ -696,6 +703,25 @@ printf "q10_re(v20): %f %f %f %f\n", $v20.s.f[0], $v20.s.f[1], $v20.s.f[2], $v20
 printf "q10_im(v21): %f %f %f %f\n", $v21.s.f[0], $v21.s.f[1], $v21.s.f[2], $v21.s.f[3]
 printf "q8_re(v16): %f %f %f %f\n", $v16.s.f[0], $v16.s.f[1], $v16.s.f[2], $v16.s.f[3]
 printf "q8_im(v17): %f %f %f %f\n", $v17.s.f[0], $v17.s.f[1], $v17.s.f[2], $v17.s.f[3]
+set $pc = $pc + 4
+continue
+end
+
+# OE_PRE_FINAL_STORES (brk 0x0E16)
+catch signal SIGTRAP
+condition 61 ((*(unsigned int*)$pc & 0xffe0001f) == 0xd4200000) && (((*(unsigned int*)$pc >> 5) & 0xffff) == 0x0E16)
+commands 61
+printf "=== OE_PRE_FINAL_STORES ===\n"
+set $x14_base = (unsigned long long)$x14
+printf "x14_base=%#llx\n", (unsigned long long)$x14_base
+printf "q4 (v8):  %f %f %f %f\n",  $v8.s.f[0],  $v8.s.f[1],  $v8.s.f[2],  $v8.s.f[3]
+printf "q4i(v9):  %f %f %f %f\n",  $v9.s.f[0],  $v9.s.f[1],  $v9.s.f[2],  $v9.s.f[3]
+printf "q5 (v10): %f %f %f %f\n",  $v10.s.f[0], $v10.s.f[1], $v10.s.f[2], $v10.s.f[3]
+printf "q5i(v11): %f %f %f %f\n",  $v11.s.f[0], $v11.s.f[1], $v11.s.f[2], $v11.s.f[3]
+printf "q6 (v12): %f %f %f %f\n",  $v12.s.f[0], $v12.s.f[1], $v12.s.f[2], $v12.s.f[3]
+printf "q6i(v13): %f %f %f %f\n",  $v13.s.f[0], $v13.s.f[1], $v13.s.f[2], $v13.s.f[3]
+printf "q7 (v14): %f %f %f %f\n",  $v14.s.f[0], $v14.s.f[1], $v14.s.f[2], $v14.s.f[3]
+printf "q7i(v15): %f %f %f %f\n",  $v15.s.f[0], $v15.s.f[1], $v15.s.f[2], $v15.s.f[3]
 set $pc = $pc + 4
 continue
 end

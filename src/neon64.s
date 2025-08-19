@@ -1479,7 +1479,7 @@ neon64_oe:
     brk     #0x0E20  // BRK_OE_PRE_TRN_Q0Q12
     trn1    v16.4s, v0.4s, v12.4s       // Transpose q0, q12 (lower lanes)
     trn2    v12.4s, v0.4s, v12.4s
-    mov     v0.d[0], v16.d[0]
+    mov     v0.16b, v16.16b             // Update full q0 (both halves)
     
     // ARM32: vtrn.32 q1, q13 -> Transpose q1, q13  
     // Rebuild q13 from d26, d27
@@ -1488,24 +1488,29 @@ neon64_oe:
     brk     #0x0E21  // BRK_OE_PRE_TRN_Q1Q13
     trn1    v16.4s, v1.4s, v13.4s       // Transpose q1, q13 (lower lanes)
     trn2    v13.4s, v1.4s, v13.4s
-    mov     v1.d[0], v16.d[0]
+    mov     v1.16b, v16.16b             // Update full q1 (both halves)
     
     // ARM32: vld1.32 {d24, d25}, [r11, :64] -> Load twiddle factors
     ldp     d24, d25, [x11]             // Load twiddle factors from x11
     // Broadcast twiddle scalars across full 4s lanes (upper 64 bits are undefined after ldp d..)
     //dup     v24.4s, v24.s[0]
     //dup     v25.4s, v25.s[0]
-    dup     v24.2d, v24.d[0]
-    dup     v25.2d, v25.d[0]
+    dup     v24.4s, v24.s[0]
+    dup     v25.4s, v25.s[0]
     brk     #0x0E23  // BRK_OE_TWIDDLES
     
     // ARM32: vswp d1, d2 -> Swap d-register halves for proper arrangement
-    orr     v31.16b, v0.16b, v0.16b     // Temp copy of v0
+    // Use v16 as a scratch to avoid clobbering v31 (which holds data later)
+    orr     v16.16b, v0.16b, v0.16b     // Temp copy of v0
     mov     v0.d[1], v1.d[0]            // v0.d[1] (d1) = v1.d[0] (d2)
-    mov     v1.d[0], v31.d[1]           // v1.d[0] (d2) = original v0.d[1] (d1)
+    mov     v1.d[0], v16.d[1]           // v1.d[0] (d2) = original v0.d[1] (d1)
+
+    // Pre-store checkpoint for q0/q1
+    brk     #0x0E12
     
     // ARM32: vst1.32 {q0, q1}, [r2, :64]! -> Store first set of results
-    st2 {v0.4s, v1.4s}, [x2], #32       // Store q0/q1 (4 complex numbers)
+    // Contiguous store to match ARM32 vst1.32 {q0,q1}
+    stp    q0, q1, [x2], #32            // Store q0, q1 and advance pointer
     
     // NEW: Verify first store in oe
     brk     #0x0E14  // BRK_OE_FIRST_STORE
@@ -1589,12 +1594,17 @@ neon64_oe:
     mov     v5.16b, v16.16b
     
     // ARM32: vswp d5, d6 -> Swap for proper arrangement
-    orr     v31.16b, v2.16b, v2.16b     // Temp copy
+    // Use v16 as a scratch to avoid clobbering v31
+    orr     v16.16b, v2.16b, v2.16b     // Temp copy
     mov     v2.d[1], v3.d[0]            // v2.d[1] (d5) = v3.d[0] (d6)
-    mov     v3.d[0], v31.d[1]           // v3.d[0] (d6) = original v2.d[1] (d5)
+    mov     v3.d[0], v16.d[1]           // v3.d[0] (d6) = original v2.d[1] (d5)
+
+    // Pre-store checkpoint for q2/q3
+    brk     #0x0E13
     
     // ARM32: vst1.32 {q2, q3}, [r2, :64]! -> Store second set
-    st2 {v2.4s, v3.4s}, [x2], #32       // Store q2/q3 (4 complex numbers)
+    // Contiguous store to match ARM32 vst1.32 {q2,q3}
+    stp    q2, q3, [x2], #32            // Store q2, q3 and advance pointer
     // New: pre-twiddle snapshot before complex mul phase
     brk     #0x0E1E  // BRK_OE_PRE_TWIDDLE
  
@@ -1620,22 +1630,20 @@ neon64_oe:
     mov     v17.16b, v31.16b
     brk     #0x0E24  // BRK_OE_PRE_TWIDDLE_TRANSPOSE
 
-    // ARM32: Complex multiplication: (a + bi) × (c + di) = (ac - bd) + (ad + bc)i -> simplified to 4-lane
+    // ARM32: Complex multiplication: (a + bi) × (c + di) = (ac - bd) + (ad + bc)i
+    // Use re-paired q11/q9 and q10/q8 from the TRN stage (v22,v23,v18,v19,v20,v21,v16,v17)
     // vmul.f32 d20, d18, d25; vmul.f32 d22, d19, d24
-    fmul    v20.4s, v6.4s, v25.4s       // q10 = q3_real * twiddle_imag  
-    fmul    v22.4s, v7.4s, v24.4s       // q11 = q3_imag * twiddle_real
-    
+    fmul    v20.4s, v18.4s, v25.4s      // d20 = d18 * d25
+    fmul    v22.4s, v19.4s, v24.4s      // d22 = d19 * d24
     // vmul.f32 d21, d19, d25; vmul.f32 d18, d18, d24
-    fmul    v21.4s, v7.4s, v25.4s       // q10 = q3_imag * twiddle_imag
-    fmul    v18.4s, v6.4s, v24.4s       // q9 = q3_real * twiddle_real
-    
+    fmul    v21.4s, v19.4s, v25.4s      // d21 = d19 * d25
+    fmul    v18.4s, v18.4s, v24.4s      // d18 = d18 * d24
     // vmul.f32 d19, d16, d25; vmul.f32 d30, d17, d24  
-    fmul    v19.4s, v4.4s, v25.4s       // q9 = q2_real * twiddle_imag
-    fmul    v30.4s, v5.4s, v24.4s       // q15 = q2_imag * twiddle_real
-    
+    fmul    v19.4s, v16.4s, v25.4s      // d19 = d16 * d25
+    fmul    v30.4s, v17.4s, v24.4s      // d30 = d17 * d24
     // vmul.f32 d23, d16, d24; vmul.f32 d24, d17, d25
-    fmul    v23.4s, v4.4s, v24.4s       // q11 = q2_real * twiddle_real
-    fmul    v24.4s, v5.4s, v25.4s       // q12 = q2_imag * twiddle_imag
+    fmul    v23.4s, v16.4s, v24.4s      // d23 = d16 * d24
+    fmul    v24.4s, v17.4s, v25.4s      // d24 = d17 * d25
     
     // ARM32: Combine terms for complex multiplication results
     // vadd.f32 d17, d22, d20; vsub.f32 d16, d18, d21  
@@ -1666,15 +1674,15 @@ neon64_oe:
     // ARM32: Final butterfly combinations with stored results
     // vadd.f32 q4, q14, q9; vsub.f32 q6, q14, q9
     fadd    v8.4s, v14.4s, v18.4s       // q4 = q14 + q9
-    fadd    v9.4s, v15.4s, v19.4s       // q4 = q14 + q9 (imag)
+    // Ensure v15 is defined before use (compute q7 real first)
+    fadd    v11.4s, v27.4s, v16.4s      // q5 = q13 + q8 (real)
+    fsub    v15.4s, v27.4s, v16.4s      // q7 = q13 - q8 (real)
+    fadd    v9.4s, v15.4s, v19.4s       // q4 imag = q15 + q9_imag
     fsub    v12.4s, v14.4s, v18.4s      // q6 = q14 - q9  
-    fsub    v13.4s, v15.4s, v19.4s      // q6 = q14 - q9 (imag)
+    fsub    v13.4s, v15.4s, v19.4s      // q6 imag = q15 - q9_imag
     
     // ARM32: Individual d-register operations for final results -> simplified to 4-lane
     // vadd.f32 d11, d27, d16; vsub.f32 d15, d27, d16
-    fadd    v11.4s, v27.4s, v16.4s      // q5 = q13 + q8
-    fsub    v15.4s, v27.4s, v16.4s      // q7 = q13 - q8
-    
     // vsub.f32 d10, d26, d17; vadd.f32 d14, d26, d17
     fsub    v10.4s, v26.4s, v17.4s      // q5 = q13 - q8 (imag)
     fadd    v14.4s, v26.4s, v17.4s      // q7 = q13 + q8 (imag)
@@ -1687,20 +1695,23 @@ neon64_oe:
     // REMOVED: mov     v7.16b, v13.16b             // q7 from final result
     
     // Store final results using 4-lane operations in q4..q7 order
-    // q4 is in v8 (real) and v9 (imag)
-    st2 {v8.4s,  v9.4s},  [x14], #32      // Store q4
-    // q5 is in v11 (real) and v10 (imag) -> swap whole vectors so real,imag are {v10,v11}
-    orr     v31.16b, v10.16b, v10.16b
-    mov     v10.16b,  v11.16b
-    mov     v11.16b,  v31.16b
-    st2 {v10.4s, v11.4s}, [x14], #32      // Store q5
-    // q6 is in {v12 (real), v13 (imag)} and already consecutive
-    st2 {v12.4s, v13.4s}, [x14], #32      // Store q6
-    // q7 is in v15 (real) and v14 (imag) -> swap whole vectors so real,imag are {v14,v15}
-    orr     v31.16b, v14.16b, v14.16b
-    mov     v14.16b,  v15.16b
-    mov     v15.16b,  v31.16b
-    st2 {v14.4s, v15.4s}, [x14], #32      // Store q7
+    // q4..q7 contiguous store matching ARM32 vstmia lr!, {q4-q7}
+    // Pre-final-store checkpoint
+    brk     #0x0E16  // BRK_OE_PRE_FINAL_STORES
+    // Implement 64-bit lane swaps equivalent if needed before storing
+    // vswp d9, d10 (between q4_imag and q5_real): swap v9.d[0] with v10.d[0]
+    orr     v16.16b, v9.16b, v9.16b
+    mov     v9.d[0],  v10.d[0]
+    mov     v10.d[0], v16.d[0]
+    // vswp d13, d14 (between q6_imag and q7_real): swap v13.d[0] with v14.d[0]
+    orr     v16.16b, v13.16b, v13.16b
+    mov     v13.d[0], v14.d[0]
+    mov     v14.d[0], v16.d[0]
+    // Contiguous stores of q4..q7
+    stp     q8,  q9,  [x14], #32         // Store q4
+    stp     q10, q11, [x14], #32         // Store q5
+    stp     q12, q13, [x14], #32         // Store q6
+    stp     q14, q15, [x14], #32         // Store q7
     
     // NEW: Verify final stores in oe
     brk     #0x0E15  // BRK_OE_FINAL_STORES

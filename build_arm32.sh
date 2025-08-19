@@ -136,6 +136,7 @@ echo "Libraries: $INSTALL_DIR/lib/"
 echo "Headers: $INSTALL_DIR/include/"
 
 # Optional: Create a simple test if we can run ARM32 binaries
+if [ -z "$SKIP_QEMU_TEST" ]; then
 if command -v qemu-arm &> /dev/null && [ "$TOOLCHAIN" = "arm-linux-gnueabihf" ]; then
     echo "Testing with QEMU..."
     # Look for test executable in tests directory (autotools build)
@@ -146,4 +147,5 @@ if command -v qemu-arm &> /dev/null && [ "$TOOLCHAIN" = "arm-linux-gnueabihf" ];
     else
         echo "No test executable found to run with QEMU"
     fi
+fi
 fi

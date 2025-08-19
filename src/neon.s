@@ -334,20 +334,28 @@ _neon_ee:
   .globl  neon_ee
 neon_ee:
 #endif
+  bkpt     #0xEE00               @ BRK_EE_ENTRY
   vld1.32  {d16, d17}, [r2, :64]
+  bkpt     #0xEE02               @ BRK_EE_TWIDDLES_LOADED
 1:
+  bkpt     #0xEE03               @ BRK_EE_LOOP_START
   vld2.32  {q15}, [r10, :64]!
   vld2.32  {q13}, [r8, :64]!
+  bkpt     #0xEE16               @ BRK_EE_AFTER_LD2_X8
   vld2.32  {q14}, [r7, :64]!
   vld2.32  {q9},  [r4, :64]!
   vld2.32  {q10}, [r3, :64]!
   vld2.32  {q11}, [r6, :64]!
   vld2.32  {q12}, [r5, :64]!
+  bkpt     #0xEE04               @ BRK_EE_DATA_LOADED
   vsub.f32 q1, q14, q13
+  bkpt     #0xEE10               @ BRK_EE_Q1_BUILT
   vld2.32  {q0}, [r9, :64]!
+  bkpt     #0xEE11               @ BRK_EE_Q0_LOADED
   subs     r11, r11, #1
   vsub.f32 q2,  q0,  q15
   vadd.f32 q0,  q0,  q15
+  bkpt     #0xEE12               @ BRK_EE_Q0Q2_UPDATED
   vmul.f32 d10, d2,  d17
   vmul.f32 d11, d3,  d16
   vmul.f32 d12, d3,  d17
@@ -361,6 +369,7 @@ neon_ee:
   vsub.f32 q1,  q12, q11
   vsub.f32 q2,  q10, q9
   vadd.f32 d6,  d9,  d8
+  bkpt     #0xEE13               @ BRK_EE_DLANE_PARTIALS
   vadd.f32 q4,  q14, q13
   vadd.f32 q11, q12, q11
   vadd.f32 q12, q10, q9
@@ -384,22 +393,30 @@ neon_ee:
   vsub.f32 d13, d19, d14
   vadd.f32 d12, d18, d15
   vsub.f32 d15, d31, d26
+  bkpt     #0xEE14               @ BRK_EE_BFLY2_DONE
   ldr      r2, [r12], #4
+  bkpt     #0xEE06               @ BRK_EE_OFFSET1_LOADED
   vtrn.32  q1,  q3
   ldr      lr, [r12], #4
+  bkpt     #0xEE07               @ BRK_EE_OFFSET2_LOADED
   vtrn.32  q0,  q2
   add      r2, r0, r2, lsl #2
+  bkpt     #0xEE08               @ BRK_EE_ADDR1_CALC
   vsub.f32 q4,  q11, q10
   add      lr, r0, lr, lsl #2
+  bkpt     #0xEE09               @ BRK_EE_ADDR2_CALC
   vsub.f32 q5,  q14, q5
   vadd.f32 d14, d30, d27
   vst2.32  {q0, q1}, [r2, :64]!
   vst2.32  {q2, q3}, [lr, :64]!
+  bkpt     #0xEE0A               @ BRK_EE_STORE1
   vtrn.32  q4,  q6
   vtrn.32  q5,  q7
   vst2.32  {q4, q5}, [r2, :64]!
   vst2.32  {q6, q7}, [lr, :64]!
+  bkpt     #0xEE0B               @ BRK_EE_STORE2
   bne      1b
+  bkpt     #0xEE0D               @ BRK_EE_FUNCTION_EXIT
 
 @ assumes r0 = out 
 @         

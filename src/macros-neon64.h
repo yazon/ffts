@@ -63,6 +63,14 @@ typedef float32x4x2_t V4SF2;      /* A pair of V4SF, used for LD2/ST2 results */
 #define V4SF2_LD vld2q_f32         /* LD2 {Vt.4S,Vt+1.4S},[Xn] */
 #define V4SF2_ST vst2q_f32         /* ST2 {Vt.4S,Vt+1.4S},[Xn] */
 
+/* Store a V4SF2 pair in split real/imag layout exactly like ARM32 NEON helper. */
+static FFTS_ALWAYS_INLINE void
+V4SF2_STORE_SPR(float *addr, V4SF2 p)
+{
+    vst1q_f32(addr, p.val[0]);      /* store real lane */
+    vst1q_f32(addr + 4, p.val[1]); /* store imag lane */
+}
+
 /* Bitwise XOR for sign manipulation (e.g., negation) */
 #define V4SF_XOR(x,y) \
     (vreinterpretq_f32_u32(veorq_u32(vreinterpretq_u32_f32(x), vreinterpretq_u32_f32(y))))

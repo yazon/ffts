@@ -30,6 +30,7 @@ commands 3
 printf "=== EE_TWIDDLES_LOADED ===\n"
 printf "Twiddle v16.4s: %f %f %f %f\n", $v16.s.f[0], $v16.s.f[1], $v16.s.f[2], $v16.s.f[3]
 printf "Twiddle v17.4s: %f %f %f %f\n", $v17.s.f[0], $v17.s.f[1], $v17.s.f[2], $v17.s.f[3]
+printf "Twiddle scalars (re,im): %f %f\n", $v16.s.f[0], $v17.s.f[0]
 set $pc = $pc + 4
 continue
 end

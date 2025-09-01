@@ -758,6 +758,9 @@ neon64_ee:
     
     // ARM32: vmul.f32 d13, d2, d16 -> multiply q1_real with twiddle_real
     fmul  v13.4s, v2.4s, v16.4s       // q6 = q1_real * twiddle_real
+    // ARM32 counterpart also computes: vmul.f32 d12, d3, d17 (q1_imag * twiddle_imag)
+    // Compute that missing term explicitly so we can form (q1_real*tw_re) - (q1_imag*tw_im)
+    fmul  v12.4s, v3.4s, v17.4s       // tmp = q1_imag * twiddle_imag
     
     // ARM32: vsub.f32 d7, d7, d6
     fsub  v7.4s, v7.4s, v6.4s         // q3 = q2_imag*twiddle_real - q2_real*twiddle_imag
@@ -792,7 +795,8 @@ neon64_ee:
     fadd  v25.4s, v21.4s, v19.4s      // q12 imag: q10_imag + q9_imag
     
     // ARM32: vsub.f32 d10, d13, d12 -> build complex multiplication result
-    fsub  v12.4s, v13.4s, v10.4s      // q6 = q1_real*twiddle_real - q1_real*twiddle_imag  
+    // Correct: q6 = q1_real*twiddle_real - q1_imag*twiddle_imag
+    fsub  v12.4s, v13.4s, v12.4s      // q6 = q1_real*twiddle_real - q1_imag*twiddle_imag
     
     // ARM32: vsub.f32 q7, q4, q0
     fsub  v28.4s, v14.4s, v0.4s       // q7 real: q4_real - q0_real

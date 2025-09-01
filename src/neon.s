@@ -571,23 +571,27 @@ _neon_oe:
   .globl  neon_oe
 neon_oe:
 #endif
+  bkpt     #0x0E00               @ BRK_OE_ENTRY
   vld1.32  {q8},  [r5,  :64]!
   vld1.32  {q10}, [r6,  :64]!
   vld2.32  {q11}, [r4,  :64]!
   vld2.32  {q13}, [r3,  :64]!
   vld2.32  {q15}, [r10, :64]!
+  bkpt     #0x0E02               @ BRK_OE_INITIAL_LOADS
   vorr     d25, d17, d17
   vorr     d24, d20, d20
   vorr     d20, d16, d16
   vsub.f32 q9,  q13, q11
   vadd.f32 q11, q13, q11
   ldr      r2,  [r12], #4
+  # bkpt     #0x0E90               @ BRK_OE_OFF2_LOADED
   vtrn.32  d24, d25
   ldr      lr,  [r12], #4
   vtrn.32  d20, d21
   add      r2,  r0,  r2, lsl #2
   vsub.f32 q8,  q10, q12
   add      lr,  r0,  lr, lsl #2
+  # bkpt     #0x0E17               @ BRK_OE_ADDRS_READY
   vadd.f32 q10, q10, q12
   vadd.f32 q0,  q11, q10
   vadd.f32 d25, d19, d16
@@ -595,15 +599,23 @@ neon_oe:
   vsub.f32 q1,  q11, q10
   vsub.f32 d24, d18, d17
   vadd.f32 d26, d18, d17
+  # bkpt     #0x0E20               @ BRK_OE_PRE_TRN_Q0Q12
   vtrn.32  q0,  q12
+  # bkpt     #0x0E26               @ BRK_OE_PRE_TRN_Q1Q13
   vtrn.32  q1,  q13
   vld1.32  {d24, d25}, [r11, :64]
+  bkpt     #0x0E23               @ BRK_OE_TWIDDLES
   vswp     d1, d2
+  # bkpt     #0x0E12               @ BRK_OE_PRE_STORE_Q01
   vst1.32  {q0,  q1},  [r2, :64]!
+  # bkpt     #0x0E14               @ BRK_OE_FIRST_STORE
   vld2.32  {q0},  [r9, :64]!
+  bkpt     #0x0E1B               @ BRK_OE_SECOND_LOADS_A (x9)
   vadd.f32 q1,  q0, q15
   vld2.32  {q13}, [r8, :64]!
+  bkpt     #0x0E1C               @ BRK_OE_SECOND_LOADS_B (x8)
   vld2.32  {q14}, [r7, :64]!
+  # bkpt     #0x0E1D               @ BRK_OE_SECOND_LOADS_C (x7)
   vsub.f32 q15, q0,  q15
   vsub.f32 q0,  q14, q13
   vadd.f32 q3,  q14, q13
@@ -613,10 +625,13 @@ neon_oe:
   vsub.f32 q3,  q3,  q1
   vsub.f32 d28, d0,  d31
   vadd.f32 d26, d0,  d31
+  bkpt     #0x0E22               @ BRK_OE_PRE_TRN_Q2Q14
   vtrn.32  q2,  q14
   vtrn.32  q3,  q13
+  bkpt     #0x0E13               @ BRK_OE_PRE_STORE_Q23
   vswp     d5, d6
   vst1.32  {q2, q3}, [r2, :64]!
+  bkpt     #0x0E1E               @ BRK_OE_PRE_TWIDDLE
   vtrn.32  q11, q9
   vtrn.32  q10, q8
   vmul.f32 d20, d18, d25
@@ -639,9 +654,11 @@ neon_oe:
   vsub.f32 d15, d27, d16
   vsub.f32 d10, d26, d17
   vadd.f32 d14, d26, d17
+  bkpt     #0x0E16               @ BRK_OE_PRE_FINAL_STORES
   vswp     d9,  d10
   vswp     d13, d14
   vstmia   lr!, {q4-q7}
+  bkpt     #0x0E15               @ BRK_OE_FINAL_STORES
 
   .align 4
 #ifdef __APPLE__

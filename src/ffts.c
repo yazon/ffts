@@ -264,7 +264,7 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
     if (n_luts) {
         size_t lut_size;
 
-#if defined(__arm__) && !defined(HAVE_NEON)
+#if defined(__arm__) || (defined(__aarch64__) && defined(HAVE_NEON))
         lut_size = leaf_N * (((1 << n_luts) - 2) * 3 + 1) * sizeof(ffts_cpx_32f) / 2;
 #else
         lut_size = leaf_N * (((1 << n_luts) - 2) * 3 + 1) * sizeof(ffts_cpx_32f);
@@ -309,7 +309,7 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
                 w0[j][1] = tmp[j * stride][1];
             }
 
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 #ifdef HAVE_NEON
             for (j = 0; j < n/4; j += 4) {
                 V4SF2 temp0 = V4SF2_LD(fw0 + j*2);
@@ -360,7 +360,7 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
                 w2[j][1] = tmp[(j + (n/8)) * stride][1];
             }
 
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 #ifdef HAVE_NEON
             for (j = 0; j < n/8; j += 4) {
                 V4SF2 temp0, temp1, temp2;
@@ -426,27 +426,27 @@ ffts_generate_luts(ffts_plan_t *p, size_t N, size_t leaf_N, int sign)
         stride >>= 1;
     }
 
-#if defined(__aarch64__)
-    /* Provide explicit per-leaf twiddle bases for ARM64 */
-    if (n_luts) {
-        uint8_t *ws_base = (uint8_t*)p->ws;
-        size_t off0 = 8 * p->ws_is[0];
-        p->ee_ws = ws_base + off0;
-        if (n_luts > 1) {
-            size_t off1 = 8 * p->ws_is[1];
-            p->oe_ws = ws_base + off1;
-            p->eo_ws = ws_base + off1;
-        } else {
-            p->oe_ws = p->ee_ws;
-            p->eo_ws = p->ee_ws;
-        }
-    }
-#endif
+// #if defined(__aarch64__)
+//     /* Provide explicit per-leaf twiddle bases for ARM64 */
+//     if (n_luts) {
+//         uint8_t *ws_base = (uint8_t*)p->ws;
+//         size_t off0 = 8 * p->ws_is[0];
+//         p->ee_ws = ws_base + off0;
+//         if (n_luts > 1) {
+//             size_t off1 = 8 * p->ws_is[1];
+//             p->oe_ws = ws_base + off1;
+//             p->eo_ws = ws_base + off1;
+//         } else {
+//             p->oe_ws = p->ee_ws;
+//             p->eo_ws = p->ee_ws;
+//         }
+//     }
+// #endif
 
-#if defined(__aarch64__)
-    /* AArch64 parity fix for N=32: align ws_is[1] with ARM32 NEON layout */
+#if defined(__aarch64__) && defined(HAVE_NEON)
+    /* AArch64 parity fix: match ARM32 ws_is layout for N=32 */
     if (N == 32 && n_luts >= 2 && p->ws_is) {
-        p->ws_is[1] >>= 1;
+        p->ws_is[1] >>= 1; /* divide by 2 to align with ARM32 stride */
     }
 #endif
 
